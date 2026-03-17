@@ -141,15 +141,45 @@ Cost(P, s_0) = \kappa
 
 Since all actions are executable in every state (A6), every program is executable; thus, this query checks whether the execution cost equals $\kappa$.
 
+\section{Partial Initial States}
+
+A partial initial state represents a set of complete states (completions), each assigning a truth value to every fluent while remaining consistent with the given literals.
+\\Execution of a program $P$ from a partial state $s_0$ induces a set of possible trajectories:
+\[
+s_0^i \xrightarrow{P} s_n^i
+\]
+
+\subsection*{Q1: Goal Satisfaction (Skeptical Semantics)}
+
+\[
+Holds(P, s_0, \gamma) = true
+\]
+iff:
+\[
+\forall i: \gamma \subseteq s_n^i
+\]
+
+\subsection*{Q2: Executability with Cost (Skeptical Semantics)}
+
+\[
+Executable(P, s_0, \kappa) = true
+\]
+iff:
+\[
+\forall i: Cost(P, s_0^i) = \kappa
+\]
+
 \section{Example}
 
 Let:
 \[
-\mathcal{F} = \{doorOpen\}
+\mathcal{F} = \{doorOpen, hasKey\}
 \]
-Define action $openDoor$:
+Define actions:
+
+\paragraph{openDoor}
 \[
-Pre(openDoor) = \{\neg doorOpen\}
+Pre(openDoor) = \{hasKey\}
 \]
 \[
 Eff(openDoor) = doorOpen
@@ -157,26 +187,88 @@ Eff(openDoor) = doorOpen
 \[
 \kappa(openDoor) = 5
 \]
-Initial state:
+
+\paragraph{knock}
+\[
+Pre(knock) = \emptyset
+\]
+\[
+Eff(knock) = \emptyset
+\]
+\[
+\kappa(knock) = 2
+\]
+Initial state (partial):
 \[
 s_0 = \{\neg doorOpen\}
 \]
-Program:
+The fluent $hasKey$ is unknown.
+
+\subsection*{Completions of $s_0$}
+
+\[
+s_0^1 = \{\neg doorOpen, hasKey\}
+\]
+\[
+s_0^2 = \{\neg doorOpen, \neg hasKey\}
+\]
+
+\subsection*{Program}
+
 \[
 P = (openDoor)
 \]
-Execution:
+
+\subsection*{Execution}
+
+\paragraph{Case 1: $s_0^1$}
+
+Precondition holds, so:
 \[
-s_1 = \{doorOpen\}
+s_1^1 = \{doorOpen, hasKey\}
+\]
+Cost:
+\[
+Cost(P, s_0^1) = 5
+\]
+
+\paragraph{Case 2: $s_0^2$}
+
+Precondition does not hold, so:
+\[
+s_1^2 = \{\neg doorOpen, \neg hasKey\}
+\]
+Cost:
+\[
+Cost(P, s_0^2) = 0
+\]
+
+\subsection*{Final States}
+
+\[
+\{s_1^1, s_1^2\}
 \]
 
 \subsection*{Query Results}
 
+\paragraph{Q1: Goal Satisfaction}
+
 \[
-Holds(P, s_0, \{doorOpen\}) = true
+Holds(P, s_0, \{doorOpen\}) = false
 \]
+
+because $doorOpen$ does not hold in all final states.
+
+\paragraph{Q2: Executability with Cost}
+
 \[
-Executable(P, s_0, 5) = true
+Executable(P, s_0, 5) = false
 \]
+since $\exists i \; Cost(P, s_0^i) \neq 5$.
+
+\[
+Executable(P, s_0, 0) = false
+\]
+since $\exists i \; Cost(P, s_0^i) \neq 0$.
 
 \end{document}
