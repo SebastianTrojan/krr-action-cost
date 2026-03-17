@@ -1,0 +1,182 @@
+\documentclass[11pt]{article}
+
+\usepackage[margin=1in]{geometry}
+\usepackage{amsmath, amssymb}
+
+\title{Knowledge Representation and Reasoning \\ Project 4: Actions with Cost}
+\author{}
+\date{}
+
+\begin{document}
+
+\maketitle
+
+\section{Introduction}
+
+We define an action description language for representing dynamic systems of class DS4 satisfying assumptions A1--A8.
+
+\section{Signature}
+
+A domain description $D$ consists of:
+\begin{itemize}
+    \item A finite set of fluents $\mathcal{F}$
+    \item A finite set of actions $\mathcal{A}$
+\end{itemize}
+
+\section{Literals}
+
+A \textbf{literal} is either a fluent $f \in \mathcal{F}$ or its negation $\neg f$.
+
+\section{States}
+
+A \textbf{state} $s$ is a consistent set of literals (i.e., it does not contain both $f$ and $\neg f$).
+States may be \textbf{partial}: for some fluent $f$, neither $f$ nor $\neg f$ needs to belong to $s$.
+
+\section{Action Description}
+
+Each action $a \in \mathcal{A}$ is defined as:
+\[
+a = \langle Pre(a), Eff(a), \kappa(a) \rangle
+\]
+where:
+\begin{itemize}
+    \item $Pre(a)$ is a set of literals (preconditions),
+    \item $Eff(a)$ is either a literal or $\emptyset$,
+    \item $\kappa(a) \geq 0$ is the base cost of the action.
+\end{itemize}
+
+\section{Transition Function}
+
+We define a transition function:
+\[
+Result(s,a) = s'
+\]
+
+\subsection*{Case 1: Preconditions Hold}
+
+If $Pre(a) \subseteq s$, then:
+\[
+Result(s,a) =
+\begin{cases}
+(s \setminus \{\neg l\}) \cup \{l\} & \text{if } Eff(a) = l \\
+s & \text{if } Eff(a) = \emptyset
+\end{cases}
+\]
+
+\subsection*{Case 2: Preconditions Do Not Hold}
+
+If $Pre(a) \nsubseteq s$, then:
+\[
+Result(s,a) = s
+\]
+
+\paragraph{Inertia (A1).}
+All fluents not affected by an action remain unchanged.
+
+\section{Execution Cost}
+
+The cost of executing an action $a$ in state $s$ is:
+\[
+ExecCost(a,s) =
+\begin{cases}
+\kappa(a) & \text{if } Pre(a) \subseteq s \text{ and } Eff(a) \neq \emptyset \\
+0 & \text{otherwise}
+\end{cases}
+\]
+
+\section{Programs}
+
+A program is a sequence of actions:
+\[
+P = (a_1, a_2, \dots, a_n), \quad n \geq 0
+\]
+Execution is defined as:
+\[
+s_0 \xrightarrow{a_1} s_1 \xrightarrow{a_2} \dots \xrightarrow{a_n} s_n
+\]
+where $s_i = Result(s_{i-1}, a_i)$.
+
+Due to partial initial states (A7), a program may correspond to multiple possible execution paths (A3).
+
+\section{Cost of a Program}
+
+The total cost of executing $P$ in $s_0$ is:
+\[
+Cost(P, s_0) = \sum_{i=1}^{n} ExecCost(a_i, s_{i-1})
+\]
+
+\section{Query Language}
+
+\subsection{Q1: Goal Satisfaction}
+
+\[
+Holds(P, s_0, \gamma)
+\]
+
+where $\gamma$ is a set of literals.
+
+\paragraph{Semantics.}
+\[
+Holds(P, s_0, \gamma) = true
+\]
+iff for the resulting state $s_n$:
+\[
+\gamma \subseteq s_n
+\]
+
+\subsection{Q2: Executability with Cost}
+
+\[
+Executable(P, s_0, \kappa)
+\]
+
+\paragraph{Semantics.}
+\[
+Executable(P, s_0, \kappa) = true
+\]
+iff:
+\[
+Cost(P, s_0) = \kappa
+\]
+
+Since all actions are executable in every state (A6), every program is executable; thus, this query checks whether the execution cost equals $\kappa$.
+
+\section{Example}
+
+Let:
+\[
+\mathcal{F} = \{doorOpen\}
+\]
+Define action $openDoor$:
+\[
+Pre(openDoor) = \{\neg doorOpen\}
+\]
+\[
+Eff(openDoor) = doorOpen
+\]
+\[
+\kappa(openDoor) = 5
+\]
+Initial state:
+\[
+s_0 = \{\neg doorOpen\}
+\]
+Program:
+\[
+P = (openDoor)
+\]
+Execution:
+\[
+s_1 = \{doorOpen\}
+\]
+
+\subsection*{Query Results}
+
+\[
+Holds(P, s_0, \{doorOpen\}) = true
+\]
+\[
+Executable(P, s_0, 5) = true
+\]
+
+\end{document}
