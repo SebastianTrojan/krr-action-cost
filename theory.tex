@@ -40,8 +40,8 @@ a = \langle Pre(a), Eff(a), \kappa(a) \rangle
 \]
 where:
 \begin{itemize}
-    \item $Pre(a)$ is a set of literals (preconditions),
-    \item $Eff(a)$ is either a literal or $\emptyset$,
+    \item $Pre(a)$ is a set of preconditions (set of literals, can be empty),
+    \item $Eff(a)$ is the effect of the action (a literal),
     \item $\kappa(a) \geq 0$ is the base cost of the action.
 \end{itemize}
 
@@ -105,41 +105,52 @@ The total cost of executing $P$ in $s_0$ is:
 Cost(P, s_0) = \sum_{i=1}^{n} ExecCost(a_i, s_{i-1})
 \]
 
-\section{Query Language}
+\section{Action language statements}
+\subsection{Value statement}
+\[\bar{f} ~\text{after}~ A_1, \ldots, A_n\]
+Where \(\bar{f}\in F\) is a fluent and \(A_1, \ldots, A_n \in A\) are actions.\\
+Abbreviation when \(n=0\): initially \(\bar{f}\)
 
-\subsection{Q1: Goal Satisfaction}
+\subsection{Effect statement}
+\[A_1 ~\text{causes}~ \bar{f} ~\text{if}~ g_1 ,\ldots, g_k\]
+Where \(\bar{f},g_1,\ldots,g_k \in F\) are fluents and \(A_1\in A\) is an action.\\
+Abbreviation when \(k=0\): \(A\) causes \(\bar{f}\)
 
+\subsection{Cost statement}
+\[A_1 ~\text{costs}~ \kappa ~\text{if}~ g_1 ,\ldots, g_k\]
+Where \(g_1,\ldots,g_k \in F\) are fluents, \(A_1\in A\) is an action and \(\kappa > 0\).
+Cost is \(0\) when there is no cost statement whose preconditions are satisfied.\\
+Abbreviation when \(k=0\): \(A\) costs \(\kappa\)
+
+\section{Query Language statements}
+
+\subsection*{Q1: Goal satisfaction}
+\[\gamma ~\text{after}~ P ~\text{from}~ s_0\]
+Where \(\gamma\) is the goal condition (a set of literals), \(P\) is a program (sequence of actions) and \(s_0\) is the state
+from which the program is started.\\
+Abbreviation: ``\(\gamma ~\text{after}~ P\)'' if the program is started in the initial state.
+
+The query is true iff gamma is the subset of the state \(s_n\) reached at the end of the program.
+
+\subsection*{Q2: Executability with Cost}
+\[P ~\text{executable with cost}~ \kappa ~\text{from}~ s_0\]
+Where \(\kappa > 0\), \(P\) is a program (sequence of actions) and \(s_0\) is the state
+from which the program is started.\\
+Abbreviation: ``\(P ~\text{executable with cost}~ \kappa\)'' if the program is started in the initial state.
+
+The query is true iff:
 \[
-Holds(P, s_0, \gamma)
+Cost(P, s_0) \leq \kappa
 \]
 
-where $\gamma$ is a set of literals.
+Since all actions are executable in every state (A6), every program is executable; thus, this query checks whether the execution cost is no greater than $\kappa$.
 
-\paragraph{Semantics.}
-\[
-Holds(P, s_0, \gamma) = true
-\]
-iff for the resulting state $s_n$:
-\[
-\gamma \subseteq s_n
-\]
-
-\subsection{Q2: Executability with Cost}
-
-\[
-Executable(P, s_0, \kappa)
-\]
-
-\paragraph{Semantics.}
-\[
-Executable(P, s_0, \kappa) = true
-\]
-iff:
+\subsection*{Q3: Executability with exact Cost}
+\[P ~\text{executable with exact cost}~ \kappa ~\text{from}~ s_0\]
+The same as above, except it checks for equality. It's true iff:
 \[
 Cost(P, s_0) = \kappa
 \]
-
-Since all actions are executable in every state (A6), every program is executable; thus, this query checks whether the execution cost equals $\kappa$.
 
 \section{Partial Initial States}
 
@@ -149,11 +160,9 @@ A partial initial state represents a set of complete states (completions), each 
 s_0^i \xrightarrow{P} s_n^i
 \]
 
-\subsection*{Q1: Goal Satisfaction (Skeptical Semantics)}
+\subsection*{Q1: Goal satisfaction (Skeptical Semantics)}
 
-\[
-Holds(P, s_0, \gamma) = true
-\]
+\[\gamma ~\text{after}~ P ~\text{from}~ s_0\]
 iff:
 \[
 \forall i: \gamma \subseteq s_n^i
@@ -161,9 +170,15 @@ iff:
 
 \subsection*{Q2: Executability with Cost (Skeptical Semantics)}
 
+\[P ~\text{executable with cost}~ \kappa ~\text{from}~ s_0\]
+iff:
 \[
-Executable(P, s_0, \kappa) = true
+\forall i: Cost(P, s_0^i) \leq \kappa
 \]
+
+\subsection*{Q3: Executability with exact Cost (Skeptical Semantics)}
+
+\[P ~\text{executable with exact cost}~ \kappa ~\text{from}~ s_0\]
 iff:
 \[
 \forall i: Cost(P, s_0^i) = \kappa
@@ -254,21 +269,25 @@ Cost(P, s_0^2) = 0
 \paragraph{Q1: Goal Satisfaction}
 
 \[
-Holds(P, s_0, \{doorOpen\}) = false
+\{doorOpen\} ~\text{after}~ P
 \]
 
-because $doorOpen$ does not hold in all final states.
+is false because $doorOpen$ does not hold in all final states.
 
-\paragraph{Q2: Executability with Cost}
+\paragraph{Q2 and Q3: Executability with Cost}
 
 \[
-Executable(P, s_0, 5) = false
+P ~\text{executable with exact cost}~ 5
 \]
-since $\exists i \; Cost(P, s_0^i) \neq 5$.
+is false since $\exists i \; Cost(P, s_0^i) \neq 5$. However
+\[
+P ~\text{executable with cost}~ 5
+\]
+is true, because \(openDoor\) cannot cost more than \(5\).
 
 \[
-Executable(P, s_0, 0) = false
+P ~\text{executable with cost}~ 0
 \]
-since $\exists i \; Cost(P, s_0^i) \neq 0$.
+is false since $\exists i \; Cost(P, s_0^i) > 0$.
 
 \end{document}
