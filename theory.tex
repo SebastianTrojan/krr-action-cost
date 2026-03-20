@@ -129,7 +129,7 @@ Where \(\gamma\) is the goal condition (a set of literals), \(P\) is a program (
 from which the program is started.\\
 Abbreviation: ``\(\gamma ~\text{after}~ P\)'' if the program is started in the initial state.
 
-The query is true iff gamma is the subset of the state \(s_n\) reached at the end of the program.
+The query is true iff \(\gamma \subset s_n\), which is the state reached at the end of the program.
 
 \subsection*{Q2: Executability with Cost}
 \[P ~\text{executable with cost}~ \kappa ~\text{from}~ s_0\]
@@ -189,34 +189,10 @@ Let:
 \[
 \mathcal{F} = \{doorOpen, hasKey\}
 \]
-Define actions:
 
-\paragraph{openDoor}
-\[
-Pre(openDoor) = \{hasKey\}
-\]
-\[
-Eff(openDoor) = doorOpen
-\]
-\[
-\kappa(openDoor) = 5
-\]
-
-\paragraph{knock}
-\[
-Pre(knock) = \emptyset
-\]
-\[
-Eff(knock) = \emptyset
-\]
-\[
-\kappa(knock) = 2
-\]
-Initial state (partial):
-\[
-s_0 = \{\neg doorOpen\}
-\]
-The fluent $hasKey$ is unknown.
+Let's consider the following statements:
+\[\text{initially}~ \neg doorOpen\]
+\[openDoor ~\text{causes}~ doorOpen ~\text{with cost}~ 5 ~\text{if}~ hasKey\]
 
 \subsection*{Completions of $s_0$}
 
