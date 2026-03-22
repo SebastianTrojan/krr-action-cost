@@ -3,7 +3,7 @@
 \usepackage[margin=1in]{geometry}
 \usepackage{amsmath, amssymb}
 
-\title{Knowledge Representation and Reasoning \\ Project 4: Actions with Cost}
+\title{Knowledge Representation and Reasoning \\ Project 4: Actions with Cost \\ Checkpoint 1}
 \author{Jakub Seliga, Michał Szewczak, Sebastian Trojan, Wiktoria Koniecko}
 \date{}
 
@@ -62,7 +62,7 @@ actions and states because performing an action is always possible.
 \parr
 A \textbf{cost function} is a mapping \(Cost: \actions\times\states\rightarrow\mathbb{N}\) such that:
 \[Cost(A, \sigma) = \begin{cases}
-\kappa & \text{if } (A ~\text{costs}~ \kappa) \in D ~\text{and}~ \Psi(A, \sigma)\neq\emptyset \\
+\kappa & \text{if } (A ~\text{costs}~ \kappa) \in D ~\text{and}~ \Psi(A, \sigma)\neq\sigma \\
 0 & \text{otherwise}
 \end{cases}\]
 where \(D\) is the action domain. If multiple cost statements for a single action \(A\) are present
@@ -124,9 +124,9 @@ Where \(\kappa > 0\) and \(P\) is a program.
 \subsection{Partial Initial States}
 
 A partial initial state represents a set of complete states (completions), each assigning a truth value to every fluent while remaining consistent with the given literals.
-\\Execution of a program $P$ from a partial state $s_0$ induces a set of possible trajectories:
+\\Execution of a program $P$ from a partial state $\sigma_0$ induces a set of possible models:
 \[
-s_0^i \xrightarrow{P} s_n^i
+S_i=(\Psi^i, \sigma_0^i, Cost)
 \]
 
 \subsection*{Q1: Goal satisfaction}
@@ -150,73 +150,73 @@ A query of the form:
 \[P ~\text{executable with exact cost}~ \kappa\]
 is a consequence of action domain \(D\) iff for every model \(S_i=(\Psi^i, \sigma_0^i, Cost)\):
 \[
-Cost(P, s_0^i) = \kappa
+Cost(P, \sigma_0^i) = \kappa
 \]
 
-\section{Example}
+\section*{Examples}
 
-Let:
-\[
-\mathcal{F} = \{doorOpen, hasKey\}
-\]
-
+\subsection*{Example 1}
 Let's consider the following statements:
-\[\text{initially}~ \neg doorOpen\]
-\[openDoor ~\text{causes}~ doorOpen ~\text{with cost}~ 5 ~\text{if}~ hasKey\]
-
-\subsection*{Completions of $s_0$}
-
 \[
-s_0^1 = \{\neg doorOpen, hasKey\}
+\text{initially}~ \neg doorOpen
 \]
 \[
-s_0^2 = \{\neg doorOpen, \neg hasKey\}
+openDoor ~\text{causes}~ doorOpen ~\text{if}~ hasKey
+\]
+\[
+openDoor ~\text{costs}~ 5
 \]
 
-\subsection*{Program}
-
+\subsubsection*{Program}
 \[
 P = (openDoor)
 \]
 
-\subsection*{Execution}
+\subsubsection*{Completions of $\sigma_0$}
+\[
+\sigma_0^1 = \{\neg doorOpen, hasKey\}
+\]
+\[
+\sigma_0^2 = \{\neg doorOpen, \neg hasKey\}
+\]
 
-\paragraph{Case 1: $s_0^1$}
+\subsubsection*{Execution}
+
+\paragraph{Case 1: $\sigma_0^1$}
 
 Precondition holds, so:
 \[
-s_1^1 = \{doorOpen, hasKey\}
-\]
-Cost:
-\[
-Cost(P, s_0^1) = 5
+\sigma_1^1 = \{doorOpen, hasKey\}
 \]
 
-\paragraph{Case 2: $s_0^2$}
+Cost:
+\[
+Cost^\star(P) = 5
+\]
+
+\paragraph{Case 2: $\sigma_0^2$}
 
 Precondition does not hold, so:
 \[
-s_1^2 = \{\neg doorOpen, \neg hasKey\}
+\sigma_1^2 = \{\neg doorOpen, \neg hasKey\}
 \]
+
 Cost:
 \[
-Cost(P, s_0^2) = 0
+Cost^\star(P) = 0
 \]
 
-\subsection*{Final States}
-
+\subsubsection*{Final States}
 \[
-\{s_1^1, s_1^2\}
+\{\sigma_1^1, \sigma_1^2\}
 \]
 
-\subsection*{Query Results}
+\subsubsection*{Query Results}
 
 \paragraph{Q1: Goal Satisfaction}
-
 \[
 \{doorOpen\} ~\text{after}~ P
 \]
-
 is false because $doorOpen$ does not hold in all final states.
 
 \paragraph{Q2 and Q3: Executability with Cost}
@@ -224,15 +224,218 @@ is false because $doorOpen$ does not hold in all final states.
 \[
 P ~\text{executable with exact cost}~ 5
 \]
-is false since $\exists i \; Cost(P, s_0^i) \neq 5$. However
+is false since $Cost^\star(P)$ is not always 5.
+
 \[
 P ~\text{executable with cost}~ 5
 \]
-is true, because \(openDoor\) cannot cost more than \(5\).
+is true since for all executions:
+\[
+Cost^\star(P) \leq 5
+\]
 
 \[
 P ~\text{executable with cost}~ 0
 \]
-is false since $\exists i \; Cost(P, s_0^i) > 0$.
+is false since there exists an execution with cost 5.
+
+
+\subsection*{Example 2}
+Let's consider the following statements:
+\[
+\text{initially}~ \neg doorOpen
+\]
+\[
+\text{initially}~ hasKey
+\]
+\[
+openDoor ~\text{causes}~ doorOpen ~\text{if}~ hasKey
+\]
+\[
+openDoor ~\text{costs}~ 5
+\]
+
+\subsubsection*{Program}
+\[
+P = (openDoor, openDoor)
+\]
+
+\subsubsection*{Execution}
+
+Initial state:
+\[
+\sigma_0 = \{\neg doorOpen, hasKey\}
+\]
+
+\paragraph{Action 1}
+
+Precondition holds, so:
+\[
+\sigma_1 = \{doorOpen, hasKey\}
+\]
+
+Cost:
+\[
+Cost(openDoor, \sigma_0) = 5
+\]
+
+\paragraph{Action 2}
+
+Precondition holds, but no change occurs:
+\[
+\sigma_2 = \{doorOpen, hasKey\}
+\]
+
+Cost:
+\[
+Cost(openDoor, \sigma_1) = 0
+\]
+
+\paragraph{Total Cost}
+\[
+Cost^\star(P) = 5
+\]
+
+\subsubsection*{Query Results}
+
+\paragraph{Q2: Executability with Cost}
+\[
+P ~\text{executable with cost}~ 5
+\]
+is true.
+
+\paragraph{Q3: Executability with exact Cost}
+\[
+P ~\text{executable with exact cost}~ 10
+\]
+is false since:
+\[
+Cost^\star(P) = 5 \neq 10.
+\]
+
+\subsection*{Example 3}
+Let's consider the following statements:
+\[
+\text{initially}~ \neg doorOpen
+\]
+\[
+doorOpen ~\text{after}~ openDoor
+\]
+\[
+openDoor ~\text{causes}~ doorOpen ~\text{if}~ hasKey
+\]
+\[
+openDoor ~\text{costs}~ 5
+\]
+
+\subsubsection*{Program}
+\[
+P = (openDoor)
+\]
+
+\subsubsection*{Completions of $\sigma_0$}
+\[
+\sigma_0^1 = \{\neg doorOpen, hasKey\}
+\]
+\[
+\sigma_0^2 = \{\neg doorOpen, \neg hasKey\}
+\]
+
+However, $\sigma_0^2$ is not consistent with the action domain.
+
+Indeed, since $hasKey$ does not hold, the effect does not apply, and by inertia:
+\[
+\Psi(openDoor, \sigma_0^2) \models \neg doorOpen
+\]
+
+But the value statement requires:
+\[
+\Psi(openDoor, \sigma_0^2) \models doorOpen
+\]
+
+This is a contradiction. Therefore, $\sigma_0^2$ is not allowed.
+
+\subsubsection*{Execution}
+
+Thus, the only possible initial state is:
+\[
+\sigma_0 = \{\neg doorOpen, hasKey\}
+\]
+
+Precondition holds, so:
+\[
+\sigma_1 = \{doorOpen, hasKey\}
+\]
+
+Cost:
+\[
+Cost^\star(P) = 5
+\]
+
+\subsubsection*{Final States}
+\[
+\{\sigma_1\}
+\]
+
+\subsubsection*{Query Results}
+
+\paragraph{Q1: Goal Satisfaction}
+\[
+\{doorOpen\} ~\text{after}~ P
+\]
+is true.
+
+\paragraph{Q2: Executability with Cost}
+\[
+P ~\text{executable with cost}~ 5
+\]
+is true.
+
+\paragraph{Q3: Executability with exact Cost}
+\[
+P ~\text{executable with exact cost}~ 5
+\]
+is true.
+
+\subsection*{Example 4}
+Let's consider the following statements:
+\[
+\text{initially}~ \neg doorOpen
+\]
+\[
+\text{initially}~ \neg hasKey
+\]
+\[
+doorOpen ~\text{after}~ openDoor
+\]
+\[
+openDoor ~\text{causes}~ doorOpen ~\text{if}~ hasKey
+\]
+\[
+openDoor ~\text{costs}~ 5
+\]
+
+\subsubsection*{Program}
+\[
+P = (openDoor)
+\]
+
+\subsubsection*{Execution}
+
+There is no model satisfying all statements, because:
+\begin{itemize}
+\item $\sigma_0 \models \neg hasKey$
+\item the effect requires $hasKey$
+\item the value statement enforces $doorOpen$ after $openDoor$
+\end{itemize}
+
+These constraints are inconsistent.
+
+\subsubsection*{Query Results}
+
+All queries are undefined since no model exists.
+
+
+
 
 \end{document}
