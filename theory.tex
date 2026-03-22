@@ -7,151 +7,121 @@
 \author{Jakub Seliga, Michał Szewczak, Sebastian Trojan, Wiktoria Koniecko}
 \date{}
 
+\newcommand{\fluents}{\mathcal{F}}
+\newcommand{\actions}{\mathcal{A}c}
+\newcommand{\states}{\Sigma}
+\newcommand{\parr}{\par\vspace{5mm}\noindent}
+
 \begin{document}
 
 \maketitle
 
-\section{Introduction}
+\section*{Introduction}
 
-We define an action description language for representing dynamic systems of class DS4 satisfying assumptions A1--A8.
+We define an action description language for representing dynamic systems of class \(\mathbb{DS}4\)
+satisfying assumptions A1--A8 in the task description.
 
-\section{Signature}
+\section{Action language syntax}
+Here \(\actions\) is the set of all actions and \(\fluents\) is the set of all fluents.
 
-A domain description $D$ consists of:
-\begin{itemize}
-    \item A finite set of fluents $\mathcal{F}$
-    \item A finite set of actions $\mathcal{A}$
-\end{itemize}
-
-\section{Literals}
-
-A \textbf{literal} is either a fluent $f \in \mathcal{F}$ or its negation $\neg f$.
-
-\section{States}
-
-A \textbf{state} $s$ is a consistent set of literals (i.e., it does not contain both $f$ and $\neg f$).
-States may be \textbf{partial}: for some fluent $f$, neither $f$ nor $\neg f$ needs to belong to $s$.
-
-\section{Action Description}
-
-Each action $a \in \mathcal{A}$ is defined as:
-\[
-a = \langle Pre(a), Eff(a), \kappa(a) \rangle
-\]
-where:
-\begin{itemize}
-    \item $Pre(a)$ is a set of preconditions (set of literals, can be empty),
-    \item $Eff(a)$ is the effect of the action (a literal or \(\emptyset\)),
-    \item $\kappa(a) \geq 0$ is the base cost of the action.
-\end{itemize}
-
-\section{Transition Function}
-
-We define a transition function:
-\[
-Result(s,a) = s'
-\]
-
-\subsection*{Case 1: Preconditions Hold}
-
-If $Pre(a) \subseteq s$, then:
-\[
-Result(s,a) =
-\begin{cases}
-(s \setminus \{\neg l\}) \cup \{l\} & \text{if } Eff(a) = l \\
-s & \text{if } Eff(a) = \emptyset
-\end{cases}
-\]
-
-\subsection*{Case 2: Preconditions Do Not Hold}
-
-If $Pre(a) \nsubseteq s$, then:
-\[
-Result(s,a) = s
-\]
-
-\paragraph{Inertia (A1).}
-All fluents not affected by an action remain unchanged.
-
-\section{Execution Cost}
-
-The cost of executing an action $a$ in state $s$ is:
-\[
-ExecCost(a,s) =
-\begin{cases}
-\kappa(a) & \text{if } Pre(a) \subseteq s \text{ and } Eff(a) \neq \emptyset \\
-0 & \text{otherwise}
-\end{cases}
-\]
-
-\section{Programs}
-
-A program is a sequence of actions:
-\[
-P = (a_1, a_2, \dots, a_n), \quad n \geq 0
-\]
-Execution is defined as:
-\[
-s_0 \xrightarrow{a_1} s_1 \xrightarrow{a_2} \dots \xrightarrow{a_n} s_n
-\]
-where $s_i = Result(s_{i-1}, a_i)$.
-
-Due to partial initial states (A7), a program may correspond to multiple possible execution paths (A3).
-
-\section{Cost of a Program}
-
-The total cost of executing $P$ in $s_0$ is:
-\[
-Cost(P, s_0) = \sum_{i=1}^{n} ExecCost(a_i, s_{i-1})
-\]
-
-\section{Action language statements}
 \subsection{Value statement}
 \[\bar{f} ~\text{after}~ A_1, \ldots, A_n\]
-Where \(\bar{f}\in F\) is a fluent and \(A_1, \ldots, A_n \in A\) are actions.\\
+Where \(\bar{f}\in \fluents\) is a fluent and \(A_1, \ldots, A_n \in \actions\) are actions.\\
 Abbreviation when \(n=0\): initially \(\bar{f}\)
 
 \subsection{Effect statement}
-\[A_1 ~\text{causes}~ \bar{f} ~\text{with cost}~ \kappa ~\text{if}~ g_1 ,\ldots, g_k\]
-Where \(\bar{f},g_1,\ldots,g_k \in F\) are fluents, \(A_1\in A\) is an action and \(\kappa\geq0\).\\
-Abbreviations:
+\[A ~\text{causes}~ \bar{f} ~\text{if}~ g_1 ,\ldots, g_k\]
+Where \(\bar{f},g_1,\ldots,g_k \in \fluents\) are fluents and \(A\in \actions\) is an action.\\
+Abbreviation when \(k=0\): \(A_1\) causes \(\bar{f}\)
+
+\subsection{Cost statement}
+\[A ~\text{costs}~ \kappa\]
+Where \(A\in \actions\) is an action and \(\kappa>0\).
+
+\section{Action language semantics}
+\noindent A \textbf{signature} \(\Upsilon\) consists of:
 \begin{itemize}
-    \item when \(k=0\): \(A_1\) causes \(\bar{f}\) with cost \(\kappa\)
-    \item when \(\kappa=0\): \(A_1\) causes \(\bar{f}\) if \(g_1 ,\ldots, g_k\)
-    \item when \(k=0\) and \(\kappa=0\): \(A_1\) causes \(\bar{f}\)
+    \item A finite set of fluents $\fluents$
+    \item A finite set of actions $\actions$
 \end{itemize}
+
+\parr
+A non-empty set \(D\) of value/effect/cost statements is called an \textbf{action domain}.
+
+\parr
+A \textbf{state} is a mapping \(\sigma:\fluents \rightarrow \{0,1\}\). If \(\sigma(f)=1\) we will
+write it as \(\sigma\models f\) (\(f\) holds in \(\sigma\)). We will use the symbol \(\states\) for
+the set of all states.
+
+\parr
+A \textbf{transition function} is a mapping \(\Psi: \actions\times\states\rightarrow\states\).
+The value \(\Psi(A, \sigma)\) is the state resulting from performing action \(A\) in the state \(\sigma\).
+In case of the \(\mathbb{DS}4\) class of dynamic systems the mapping \(\Psi\) must be defined for all
+actions and states because performing an action is always possible.
+
+\parr
+A \textbf{cost function} is a mapping \(Cost: \actions\times\states\rightarrow\mathbb{N}\) such that:
+\[Cost(A, \sigma) = \begin{cases}
+\kappa & \text{if } (A ~\text{costs}~ \kappa) \in D ~\text{and}~ \Psi(A, \sigma)\neq\emptyset \\
+0 & \text{otherwise}
+\end{cases}\]
+where \(D\) is the action domain. If multiple cost statements for a single action \(A\) are present
+in \(D\), the domain is inconsistent and the cost function is undefined.
+
+\parr
+Let \(\mathcal{L}\) be an action language for a \(\mathbb{DS}4\) dynamic system. A \textbf{structure for }\(\mathcal{L}\)
+is a triple \(S=(\Psi, \sigma_0, Cost)\), where:
+\begin{itemize}
+    \item \(\Psi\) is a transition function
+    \item \(\sigma_0\in\states\) is the initial state
+    \item \(Cost\) is the cost function
+\end{itemize}
+
+\parr A statement \(s\) \textbf{is true in structure} \(S\) (in symbols \(S\models s\)) iff:
+\begin{itemize}
+    \item \(s\) is of the form \[\bar{f} ~\text{after}~ A_1, \ldots, A_n\]
+    and \(\Psi\star((A_1, \ldots, A_n),\sigma_0)\models \bar{f}\)
+    \item \(s\) is of the form \[A ~\text{causes}~ \bar{f} ~\text{if}~ \bar{g_1} ,\ldots, \bar{g_k}\]
+    and for every \(\sigma\in\states\) such that \(\sigma\models \bar{g_i}\): \(\Psi(A, \sigma)\models\bar{f}\)
+    \item \(s\) is of the form \[A ~\text{costs}~ \kappa,\] function \(Cost\) is defined and
+    \((\exists\sigma\in\states)~ Cost(A,\sigma)=\kappa\).
+\end{itemize}
+
+\parr A structure \(S=(\Psi, \sigma_0, Cost)\) is a \textbf{model} of action domain \(D\) in a language over the signature
+\(\Upsilon=(\fluents,\actions)\) iff:
+\begin{itemize}
+    \item \((\forall s\in D) ~S\models s\)
+    \item \(Cost\) exists and is defined for every \(A\in \actions\) and every \(\sigma\in\states\)
+    \item for every effect statement \(s\) of the form \[A ~\text{causes}~ \bar{f} ~\text{if}~ g_1 ,\ldots, g_k\]
+    if one of the following holds:
+    \begin{itemize}
+        \item \(s\in D\) and \((\exists i\in\{1,\ldots,k\})~ \sigma\nvDash \bar{g_i}\)
+        \item \(s\notin D\)
+    \end{itemize}
+    then \(\sigma \models f\) iff \(\Psi(A,\sigma)\models f\) 
+\end{itemize}
+
+\parr A \textbf{program} \(P\) is a sequence of actions to be performed starting from the initial state.
+The cost of a program \(P=(A_1,\ldots,A_k)\) is defined as:
+\[Cost^\star((A_1,\ldots,A_k)) = \sum_{i=1}^k Cost(A_i, \Psi^\star((A_1,\ldots,A_i), \sigma_0))\]
 
 \section{Query Language statements}
 
 \subsection*{Q1: Goal satisfaction}
-\[\gamma ~\text{after}~ P ~\text{from}~ s_0\]
-Where \(\gamma\) is the goal condition (a set of literals), \(P\) is a program (sequence of actions) and \(s_0\) is the state
-from which the program is started.\\
-Abbreviation: ``\(\gamma ~\text{after}~ P\)'' if the program is started in the initial state.
-
-The query is true iff \(\gamma \subset s_n\), which is the state reached at the end of the program.
+\[\gamma ~\text{after}~ P\]
+Where \(\gamma\) is the goal condition (a set of literals) and \(P\) is a program.
 
 \subsection*{Q2: Executability with Cost}
-\[P ~\text{executable with cost}~ \kappa ~\text{from}~ s_0\]
-Where \(\kappa > 0\), \(P\) is a program (sequence of actions) and \(s_0\) is the state
-from which the program is started.\\
-Abbreviation: ``\(P ~\text{executable with cost}~ \kappa\)'' if the program is started in the initial state.
-
-The query is true iff:
-\[
-Cost(P, s_0) \leq \kappa
-\]
-
-Since all actions are executable in every state (A6), every program is executable; thus, this query checks whether the execution cost is no greater than $\kappa$.
+\[P ~\text{executable with cost}~ \kappa\]
+Where \(\kappa > 0\) and \(P\) is a program.
 
 \subsection*{Q3: Executability with exact Cost}
-\[P ~\text{executable with exact cost}~ \kappa ~\text{from}~ s_0\]
-The same as above, except it checks for equality. It's true iff:
-\[
-Cost(P, s_0) = \kappa
-\]
+\[P ~\text{executable with exact cost}~ \kappa\]
+Where \(\kappa > 0\) and \(P\) is a program.
 
-\section{Partial Initial States}
+\section{Semantics of the query language}
+
+\subsection{Partial Initial States}
 
 A partial initial state represents a set of complete states (completions), each assigning a truth value to every fluent while remaining consistent with the given literals.
 \\Execution of a program $P$ from a partial state $s_0$ induces a set of possible trajectories:
@@ -159,28 +129,28 @@ A partial initial state represents a set of complete states (completions), each 
 s_0^i \xrightarrow{P} s_n^i
 \]
 
-\subsection*{Q1: Goal satisfaction (Skeptical Semantics)}
-
-\[\gamma ~\text{after}~ P ~\text{from}~ s_0\]
-iff:
+\subsection*{Q1: Goal satisfaction}
+A query of the form:
+\[\gamma ~\text{after}~ P\]
+is a consequence of action domain \(D\) iff for every model \(S_i=(\Psi^i, \sigma_0^i, Cost)\):
 \[
-\forall i: \gamma \subseteq s_n^i
+(\forall \bar{f}\in\gamma)~~ \Psi^i(P, \sigma_0^i) \models \bar{f}
 \]
 
-\subsection*{Q2: Executability with Cost (Skeptical Semantics)}
-
-\[P ~\text{executable with cost}~ \kappa ~\text{from}~ s_0\]
-iff:
+\subsection*{Q2: Executability with Cost}
+A query of the form:
+\[P ~\text{executable with cost}~ \kappa\]
+is a consequence of action domain \(D\) iff for every model \(S_i=(\Psi^i, \sigma_0^i, Cost)\):
 \[
-\forall i: Cost(P, s_0^i) \leq \kappa
+Cost(P, \sigma_0^i) \leq \kappa
 \]
 
-\subsection*{Q3: Executability with exact Cost (Skeptical Semantics)}
-
-\[P ~\text{executable with exact cost}~ \kappa ~\text{from}~ s_0\]
-iff:
+\subsection*{Q3: Executability with exact Cost}
+A query of the form:
+\[P ~\text{executable with exact cost}~ \kappa\]
+is a consequence of action domain \(D\) iff for every model \(S_i=(\Psi^i, \sigma_0^i, Cost)\):
 \[
-\forall i: Cost(P, s_0^i) = \kappa
+Cost(P, s_0^i) = \kappa
 \]
 
 \section{Example}
