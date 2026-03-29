@@ -47,63 +47,78 @@ Where \(A\in \actions\) is an action and \(\kappa>0\).
 
 \parr
 A non-empty set \(D\) of value/effect/cost statements is called an \textbf{action domain}.
+Let \(D_{trans} \subseteq D\) be the set of all value and effect statements in \(D\), and
+\(D_{cost} \subseteq D\) be the set of all cost statements in \(D\).
 
-\parr
-A \textbf{state} is a mapping \(\sigma:\fluents \rightarrow \{0,1\}\). If \(\sigma(f)=1\) we will
-write it as \(\sigma\models f\) (\(f\) holds in \(\sigma\)). We will use the symbol \(\states\) for
-the set of all states.
+
+Model construction is based solely on \(D_{trans}\).
+Cost statements \(D_{cost}\) play no role in determining whether a structure is a model;
+they are used only in a second phase, after the transition function \(\Psi\) has been
+fully determined, to label transitions with their costs.
 
 \parr
 A \textbf{transition function} is a mapping \(\Psi: \actions\times\states\rightarrow\states\).
-The value \(\Psi(A, \sigma)\) is the state resulting from performing action \(A\) in the state \(\sigma\).
+The value \(\Psi(A, \sigma)\) is the state resulting from performing action \(A\) in state \(\sigma\).
 In case of the \(\mathbb{DS}4\) class of dynamic systems the mapping \(\Psi\) must be defined for all
 actions and states because performing an action is always possible.
 
 \parr
-A \textbf{cost function} is a mapping \(Cost: \actions\times\states\rightarrow\mathbb{N}\) such that:
-\[Cost(A, \sigma) = \begin{cases}
-\kappa & \text{if } (A ~\text{costs}~ \kappa) \in D ~\text{and}~ \Psi(A, \sigma)\neq\sigma \\
-0 & \text{otherwise}
-\end{cases}\]
-where \(D\) is the action domain. If multiple cost statements for a single action \(A\) are present
-in \(D\), the domain is inconsistent and the cost function is undefined.
-
-\parr
-Let \(\mathcal{L}\) be an action language for a \(\mathbb{DS}4\) dynamic system. A \textbf{structure for }\(\mathcal{L}\)
-is a triple \(S=(\Psi, \sigma_0, Cost)\), where:
+Let \(\mathcal{L}\) be an action language for a \(\mathbb{DS}4\) dynamic system.
+A \textbf{structure for} \(\mathcal{L}\) is a pair \(S=(\Psi, \sigma_0)\), where:
 \begin{itemize}
     \item \(\Psi\) is a transition function
     \item \(\sigma_0\in\states\) is the initial state
-    \item \(Cost\) is the cost function
 \end{itemize}
 
-\parr A statement \(s\) \textbf{is true in structure} \(S\) (in symbols \(S\models s\)) iff:
+\parr
+A statement \(s \in D_{trans}\) \textbf{is true in structure} \(S\) (in symbols \(S\models s\)) iff:
 \begin{itemize}
     \item \(s\) is of the form \[\bar{f} ~\text{after}~ A_1, \ldots, A_n\]
-    and \(\Psi\star((A_1, \ldots, A_n),\sigma_0)\models \bar{f}\)
-    \item \(s\) is of the form \[A ~\text{causes}~ \bar{f} ~\text{if}~ \bar{g_1} ,\ldots, \bar{g_k}\]
-    and for every \(\sigma\in\states\) such that \(\sigma\models \bar{g_i}\): \(\Psi(A, \sigma)\models\bar{f}\)
-    \item \(s\) is of the form \[A ~\text{costs}~ \kappa,\] function \(Cost\) is defined and
-    \((\exists\sigma\in\states)~ Cost(A,\sigma)=\kappa\).
+    and \(\Psi^\star((A_1, \ldots, A_n),\sigma_0)\models \bar{f}\)
+    \item \(s\) is of the form \[A ~\text{causes}~ \bar{f} ~\text{if}~ g_1 ,\ldots, g_k\]
+    and for every \(\sigma\in\states\) such that \(\sigma\models g_i\) for all \(i\):
+    \(\Psi(A, \sigma)\models\bar{f}\)
 \end{itemize}
 
-\parr A structure \(S=(\Psi, \sigma_0, Cost)\) is a \textbf{model} of action domain \(D\) in a language over the signature
-\(\Upsilon=(\fluents,\actions)\) iff:
+\parr
+A structure \(S=(\Psi, \sigma_0)\) is a \textbf{model} of action domain \(D\) in a language over
+the signature \(\Upsilon=(\fluents,\actions)\) iff:
 \begin{itemize}
-    \item \((\forall s\in D) ~S\models s\)
-    \item \(Cost\) exists and is defined for every \(A\in \actions\) and every \(\sigma\in\states\)
-    \item for every effect statement \(s\) of the form \[A ~\text{causes}~ \bar{f} ~\text{if}~ g_1 ,\ldots, g_k\]
-    if one of the following holds:
+    \item \((\forall s\in D_{trans})~ S\models s\)
+    \item for every effect statement \(s\) of the form
+    \[A ~\text{causes}~ \bar{f} ~\text{if}~ g_1 ,\ldots, g_k\]
+    and for every \(\sigma\in\states\), if one of the following holds:
     \begin{itemize}
-        \item \(s\in D\) and \((\exists i\in\{1,\ldots,k\})~ \sigma\nvDash \bar{g_i}\)
-        \item \(s\notin D\)
+        \item \(s\in D_{trans}\) and \((\exists i\in\{1,\ldots,k\})~ \sigma\nvDash g_i\)
+        \item \(s\notin D_{trans}\)
     \end{itemize}
-    then \(\sigma \models f\) iff \(\Psi(A,\sigma)\models f\) 
+    then \(\sigma \models \bar{f}\) iff \(\Psi(A,\sigma)\models \bar{f}\)
 \end{itemize}
 
-\parr A \textbf{program} \(P\) is a sequence of actions to be performed starting from the initial state.
+\parr
+Let \(S = (\Psi, \sigma_0)\) be a model of \(D\) (determined using \(D_{trans}\) only).
+The \textbf{cost function}
+\(Cost: \actions\times\states\rightarrow\mathbb{N}\) is then uniquely determined by \(\Psi\)
+and \(D_{cost}\) as follows:
+\[Cost(A, \sigma) = \begin{cases}
+\kappa & \text{if } (A ~\text{costs}~ \kappa) \in D_{cost}
+        ~\text{and}~ \Psi(A, \sigma)\neq\sigma \\
+0      & \text{otherwise}
+\end{cases}\]
+The \emph{otherwise} branch covers two cases mandated by assumption A5:
+(a) no cost statement for \(A\) appears in \(D_{cost}\), and
+(b) \(A\) has an empty effect in state \(\sigma\) (i.e.\ \(\Psi(A,\sigma)=\sigma\)).
+In both cases \(Cost(A,\sigma)=0\).
+
+Since \(Cost\) is uniquely determined by \(\Psi\) and \(D_{cost}\), we write the full structure
+as a triple \(S=(\Psi, \sigma_0, Cost)\) as a notational convenience, understanding \(Cost\)
+as a derived component.
+
+\parr
+A \textbf{program} \(P\) is a sequence of actions to be performed starting from the initial state.
 The cost of a program \(P=(A_1,\ldots,A_k)\) is defined as:
-\[Cost^\star((A_1,\ldots,A_k)) = \sum_{i=1}^k Cost(A_i, \Psi^\star((A_1,\ldots,A_i), \sigma_0))\]
+\[Cost^\star((A_1,\ldots,A_k)) = \sum_{i=1}^k Cost\!\left(A_i,\, \Psi^\star((A_1,\ldots,A_{i-1}), \sigma_0)\right)\]
+where \(\Psi^\star((), \sigma_0) = \sigma_0\) by convention.
 
 \section{Query Language statements}
 
