@@ -18,9 +18,24 @@
 
 \section*{Introduction}
 
-We define an action description language for representing dynamic systems of class \(\mathbb{DS}4\)
-satisfying assumptions A1--A8 in the task description.
-
+The field of Knowledge Representation and Reasoning (KRR) focuses on formalizing information so that a computer system can utilize it to solve complex tasks, such as simulating the evolution of a dynamic environment. Within this domain, action languages provide a structured way to model how autonomous agents interact with their surroundings through sequences of operations. By defining the logic behind state transitions, these systems enable automated reasoning about the consequences, feasibility, and resource requirements of specific plans.
+The primary objective of this project is to formalize and implement a logic-based framework for representing and reasoning about dynamic systems within the $\mathbb{DS}_{4}$ class. The class is an extension of class of dynamic systems described by Action Language $\mathbb{A}$,  and has following assumptions:
+\begin{enumerate}
+    \item \textbf{Inertia law:} Fluents persist in their state unless changed by an action.
+    \item \textbf{Complete information:} The system assumes full knowledge of all actions and all fluents.
+    \item \textbf{Branching model of time:} The temporal structure allows for multiple possible future paths.
+    \item \textbf{Deterministic and sequential actions:} Only one action occurs at a time, and every action has a single, predictable outcome.
+    \item \textbf{Characteristics of actions:}
+    \begin{itemize}
+        \item \textit{Precondition:} A set of literals representing the conditions for execution; if not met, the action results in an empty effect.
+        \item \textit{Postcondition:} The specific effect of an action, represented as a literal.
+        \item \textit{Cost:} A cost $\kappa \ge 1$ is required to perform an action. However, $\kappa = 0$ if the cost is unspecified or if the action results in an empty effect.
+    \end{itemize}
+    \item \textbf{Universal performance:} In every state, all actions are performed.
+    \item \textbf{Partial descriptions:} The system allows for incomplete descriptions of any given state.
+    \item \textbf{No constraints:} No state or domain constraints are admitted in this class.
+\end{enumerate}
+The difference from standard Action Language $\mathbb{A}$ is the cost associated with an action.
 \section{Action language syntax}
 Here \(\actions\) is the set of all actions and \(\fluents\) is the set of all fluents.
 
