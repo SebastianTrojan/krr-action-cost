@@ -5,3 +5,9 @@
 *.out
 *.bbl
 *.blg
+.venvb/
+.tmp/
+build/
+dist/
+__pycache__/
+*.spec

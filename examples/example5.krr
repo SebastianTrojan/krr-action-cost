@@ -1,0 +1,38 @@
+[domain]
+initially hasBadge
+initially alarmOn
+initially cameraOn
+initially !authGranted
+initially !doorOpen
+initially !vaultOpen
+initially !powerOff
+
+scanBadge causes authGranted if hasBadge
+disableAlarm causes !alarmOn if authGranted
+cutPower causes powerOff, !cameraOn
+restorePower causes !powerOff, cameraOn if authGranted
+openDoor causes doorOpen if authGranted, !alarmOn
+openVault causes vaultOpen if doorOpen, authGranted, !alarmOn
+
+scanBadge costs 1
+disableAlarm costs 2
+cutPower costs 4
+restorePower costs 3
+openDoor costs 5
+openVault costs 8
+
+doorOpen after scanBadge, disableAlarm, openDoor
+vaultOpen after scanBadge, disableAlarm, openDoor, openVault
+!cameraOn after cutPower
+cameraOn after scanBadge, cutPower, restorePower
+
+[queries]
+authGranted, !alarmOn after scanBadge, disableAlarm
+doorOpen after scanBadge, disableAlarm, openDoor
+vaultOpen after scanBadge, disableAlarm, openDoor, openVault
+cameraOn after scanBadge, cutPower, restorePower
+scanBadge, disableAlarm, openDoor, openVault executable with exact cost 16
+scanBadge, disableAlarm, openDoor, openVault executable with cost 15
+scanBadge, scanBadge executable with exact cost 1
+scanBadge, scanBadge executable with exact cost 2
+scanBadge, cutPower, restorePower executable with exact cost 8

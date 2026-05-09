@@ -1,0 +1,9 @@
+[domain]
+initially !doorOpen
+initially hasKey
+openDoor causes doorOpen if hasKey
+openDoor costs 5
+
+[queries]
+openDoor, openDoor executable with cost 5
+openDoor, openDoor executable with exact cost 10
