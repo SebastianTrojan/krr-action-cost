@@ -164,17 +164,6 @@ def parse_identifier(text: str, line_number: int, kind: str) -> str:
     return token
 
 
-def parse_literal(text: str, line_number: int) -> Literal:
-    token = text.strip()
-    positive = True
-    for prefix in ("!", "¬", "-", "not ", "neg "):
-        if token.startswith(prefix):
-            positive = False
-            token = token[len(prefix) :].strip()
-            break
-    name = parse_identifier(token, line_number, "fluent")
-    return Literal(name=name, positive=positive)
-
 
 def parse_literal_list(text: str, line_number: int) -> tuple[Literal, ...]:
     cleaned = unwrap_enclosure(text, "{", "}")
@@ -186,24 +175,6 @@ def parse_literal_list(text: str, line_number: int) -> tuple[Literal, ...]:
         return ()
     return tuple(parse_literal_strict(part, line_number) for part in parts)
 
-
-def parse_literal_strict(text: str, line_number: int) -> Literal:
-    token = text.strip()
-    positive = True
-    if token.startswith("!"):
-        positive = False
-        token = token[1:].strip()
-    elif (
-        token.startswith("¬")
-        or token.startswith("-")
-        or token.lower().startswith("not ")
-        or token.lower().startswith("neg ")
-    ):
-        raise ParseError(
-            f"Line {line_number}: unsupported negation syntax '{text}'. Use !fluent."
-        )
-    name = parse_identifier(token, line_number, "fluent")
-    return Literal(name=name, positive=positive)
 
 
 def parse_literal_strict(text: str, line_number: int) -> Literal:
