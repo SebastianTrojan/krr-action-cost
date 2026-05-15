@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import argparse
 import subprocess
 import sys
 import unittest
@@ -79,9 +80,8 @@ class TheoryExamplesTest(unittest.TestCase):
     def test_example_4(self) -> None:
         output = run_compiler("example4.krr")
         self.assertIn("DOMAIN STATUS: inconsistent", output)
-        self.assertIn("RESULT 1: UNDEFINED", output)
-        self.assertIn("RESULT 2: UNDEFINED", output)
-        self.assertIn("RESULT 3: UNDEFINED", output)
+        self.assertNotIn("QUERY 1:", output)
+        self.assertNotIn("RESULT 1:", output)
 
     def test_example_5(self) -> None:
         output = run_compiler("example5.krr")
@@ -150,6 +150,93 @@ openDoor executable with exact cost 5
         output = run_compiler_with_stdin(spec_text)
         self.assertIn("RESULT 1: TRUE", output)
         self.assertIn("RESULT 2: TRUE", output)
+
+    def test_separate_domain_and_query_fragments(self) -> None:
+        domain_text = """initially !doorOpen
+openDoor causes doorOpen if hasKey
+openDoor costs 5
+"""
+        first_output = krr_compiler.evaluate_text_fragments(
+            domain_text,
+            "doorOpen after openDoor\n",
+        )
+        second_output = krr_compiler.evaluate_text_fragments(
+            domain_text,
+            "openDoor executable with cost 5\n",
+        )
+        self.assertIn("RESULT 1: FALSE", first_output)
+        self.assertIn("RESULT 1: TRUE", second_output)
+
+    def test_split_spec_text_for_interactive_editor(self) -> None:
+        domain_text, query_text = krr_compiler.split_spec_text_for_editor(
+            """[domain]
+initially !doorOpen
+openDoor causes doorOpen if hasKey
+openDoor costs 5
+
+[queries]
+doorOpen after openDoor
+openDoor executable with cost 5
+""",
+            "example.txt",
+        )
+        self.assertEqual(
+            domain_text,
+            "initially !doorOpen\nopenDoor causes doorOpen if hasKey\nopenDoor costs 5",
+        )
+        self.assertEqual(
+            query_text,
+            "doorOpen after openDoor\nopenDoor executable with cost 5",
+        )
+
+    def test_load_interactive_workspace_texts_from_spec_file(self) -> None:
+        args = argparse.Namespace(
+            spec_file=str(ROOT / "examples" / "example1.krr"),
+            domain_file=None,
+            query_file=None,
+            interactive=True,
+            show_models=False,
+        )
+        domain_text, query_text = krr_compiler.load_interactive_workspace_texts(args)
+        self.assertIn("initially !doorOpen", domain_text)
+        self.assertIn("openDoor causes doorOpen if hasKey", domain_text)
+        self.assertIn("doorOpen after openDoor", query_text)
+        self.assertIn("openDoor executable with cost 5", query_text)
+
+    def test_load_editor_texts_from_spec_path(self) -> None:
+        domain_text, query_text = krr_compiler.load_editor_texts_from_spec_path(
+            ROOT / "examples" / "example1.krr"
+        )
+        self.assertIn("initially !doorOpen", domain_text)
+        self.assertIn("openDoor costs 5", domain_text)
+        self.assertIn("doorOpen after openDoor", query_text)
+
+    def test_inconsistent_domain_hides_query_results(self) -> None:
+        output = krr_compiler.evaluate_text_fragments(
+            "initially !doorOpen\ninitially !hasKey\ndoorOpen after openDoor\nopenDoor causes doorOpen if hasKey\nopenDoor costs 5\n",
+            "doorOpen after openDoor\nopenDoor executable with cost 5\n",
+        )
+        self.assertEqual(output, krr_compiler.INCONSISTENT_DOMAIN_MESSAGE)
+
+    def test_interactive_domain_errors_name_the_domain_window(self) -> None:
+        with self.assertRaisesRegex(
+            krr_compiler.ParseError,
+            r"Domain window: Line 1: invalid action '1openDoor'\.",
+        ):
+            krr_compiler.evaluate_text_fragments(
+                "1openDoor causes doorOpen\n",
+                "doorOpen after openDoor\n",
+            )
+
+    def test_interactive_query_errors_name_the_queries_window(self) -> None:
+        with self.assertRaisesRegex(
+            krr_compiler.ParseError,
+            r"Queries window: Line 1: query references unknown action 'unknownAction'\.",
+        ):
+            krr_compiler.evaluate_text_fragments(
+                "initially !doorOpen\nopenDoor causes doorOpen if hasKey\nopenDoor costs 5\n",
+                "unknownAction executable with cost 0\n",
+            )
 
 
     def test_interactive_requires_nonempty_submission(self) -> None:

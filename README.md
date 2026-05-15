@@ -50,20 +50,14 @@ You can also run it without files and type the code directly from the keyboard:
 python krr_compiler.py --interactive
 ```
 
-If your terminal supports it, interactive mode opens a multiline editor that behaves like one text box:
+You can also open an existing combined spec file in the interactive editor:
 
-```text
-code> [domain]
-initially !doorOpen
-openDoor causes doorOpen if hasKey
-openDoor costs 5
-[queries]
-doorOpen after openDoor
-openDoor executable with cost 5
+```powershell
+python krr_compiler.py --interactive your_file.txt
 ```
 
-Press `F5` or `Ctrl+R` to run the whole buffer.
-Format:
+Inside the interactive editor, you can press `Ctrl+O` to choose and open a `.krr` or `.txt` spec file from a file picker.
+The opened file should use the combined structure:
 
 ```text
 [domain]
@@ -72,14 +66,37 @@ Format:
 ... query statements ...
 ```
 
-If you want to pipe a full spec through standard input, use the same `[domain]` / `[queries]` format.
+If your terminal supports it, interactive mode opens a persistent split editor:
+
+```text
+F5/Ctrl+R - Run   Esc/Ctrl+Q - Exit   F1 - Help
+
+---------------------------------------------
+| Domain                      | Queries      |
+| initially !doorOpen         | doorOpen ... |
+| openDoor causes ...         | openDoor ... |
+---------------------------------------------
+| Output                                     |
+---------------------------------------------
+```
+
+The left pane is only for domain statements and the right pane is only for query statements.
+You do not need to type `[domain]` or `[queries]` inside the interactive editor.
+The Output pane starts empty and only shows compiler results or errors after you run.
+
+If you want to pipe a full spec through standard input, use the normal combined `[domain]` / `[queries]` format.
 
 Interactive mode rules:
 
-- You must include both `[domain]` and `[queries]`
-- Pressing Enter continues the spec on the next line
-- `F5` or `Ctrl+R` runs the full text buffer
-- The compiler reports missing, duplicated, or misordered sections before evaluation
+- Pressing Enter continues editing in the current pane
+- `Tab` and `Shift+Tab` switch between the Domain and Queries panes
+- `Ctrl+O` opens a combined `.krr` or `.txt` spec file into the editor
+- `F5` or `Ctrl+R` runs the compiler without closing the editor
+- `Esc` or `Ctrl+Q` exits the editor
+- `F1` toggles the detailed help panel
+- The `F1` help panel includes syntax descriptions and examples for both the Domain and Queries panes
+- The domain stays in place, so you can change queries and run again as many times as you want
+- If there is an error, it appears in the Output pane and you can keep editing both panes immediately
 
 To list accepted initial completions:
 

@@ -6,12 +6,20 @@ import sys
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
-from prompt_toolkit import PromptSession
-from prompt_toolkit.key_binding import KeyBindings
+from typing import Callable, TypeVar
 
+from prompt_toolkit.application import Application
+from prompt_toolkit.application.run_in_terminal import run_in_terminal
+from prompt_toolkit.filters import Condition
+from prompt_toolkit.key_binding import KeyBindings
+from prompt_toolkit.layout.containers import ConditionalContainer, Float, FloatContainer
+from prompt_toolkit.layout import HSplit, Layout, VSplit
+from prompt_toolkit.layout.dimension import Dimension
+from prompt_toolkit.widgets import Frame, TextArea
 
 
 IDENTIFIER_RE = re.compile(r"[A-Za-z_][A-Za-z0-9_-]*")
+INCONSISTENT_DOMAIN_MESSAGE = "DOMAIN STATUS: inconsistent (no model satisfies all value/effect statements)"
 
 
 class ParseError(ValueError):
@@ -122,7 +130,9 @@ class EvaluationContext:
 class LoadedInputs:
     domain: Domain
     queries: tuple[Query, ...]
-    interactive_session: bool
+
+
+SectionItem = TypeVar("SectionItem")
 
 
 def strip_comment(line: str) -> str:
@@ -164,6 +174,15 @@ def parse_identifier(text: str, line_number: int, kind: str) -> str:
     return token
 
 
+def parse_literal(text: str, line_number: int) -> Literal:
+    token = text.strip()
+    positive = True
+    if token.startswith("!"):
+        positive = False
+        token = token[1:].strip()
+    name = parse_identifier(token, line_number, "fluent")
+    return Literal(name=name, positive=positive)
+
 
 def parse_literal_list(text: str, line_number: int) -> tuple[Literal, ...]:
     cleaned = unwrap_enclosure(text, "{", "}")
@@ -173,28 +192,7 @@ def parse_literal_list(text: str, line_number: int) -> tuple[Literal, ...]:
     parts = [part.strip() for part in cleaned.split(",") if part.strip()]
     if not parts:
         return ()
-    return tuple(parse_literal_strict(part, line_number) for part in parts)
-
-
-
-def parse_literal_strict(text: str, line_number: int) -> Literal:
-    token = text.strip()
-    positive = True
-    if token.startswith("!"):
-        positive = False
-        token = token[1:].strip()
-    name = parse_identifier(token, line_number, "fluent")
-    return Literal(name=name, positive=positive)
-
-
-def parse_literal(text: str, line_number: int) -> Literal:
-    token = text.strip()
-    positive = True
-    if token.startswith("!"):
-        positive = False
-        token = token[1:].strip()
-    name = parse_identifier(token, line_number, "fluent")
-    return Literal(name=name, positive=positive)
+    return tuple(parse_literal(part, line_number) for part in parts)
 
 
 def parse_program(text: str, line_number: int) -> tuple[str, ...]:
@@ -325,19 +323,26 @@ def parse_query_lines(lines: list[SourceLine]) -> tuple[Query, ...]:
     return tuple(parse_query_line(line) for line in lines)
 
 
-def split_spec_lines(
-    lines: list[SourceLine],
+def split_section_items(
+    items: list[SectionItem],
     source_name: str,
+    *,
+    text_getter: Callable[[SectionItem], str],
     require_explicit_sections: bool = False,
-) -> tuple[list[SourceLine], list[SourceLine]]:
-    domain_lines: list[SourceLine] = []
-    query_lines: list[SourceLine] = []
+    require_nonempty_sections: bool | None = None,
+) -> tuple[list[SectionItem], list[SectionItem]]:
+    if require_nonempty_sections is None:
+        require_nonempty_sections = require_explicit_sections
+
+    domain_items: list[SectionItem] = []
+    query_items: list[SectionItem] = []
     current_section = "domain" if not require_explicit_sections else ""
     saw_domain_header = False
     saw_queries_header = False
 
-    for source_line in lines:
-        lowered = source_line.text.lower()
+    for item in items:
+        section_text = text_getter(item)
+        lowered = section_text.lower()
         if lowered == "[domain]":
             if saw_domain_header:
                 raise ParseError(f"{source_name}: duplicate [domain] section.")
@@ -346,6 +351,7 @@ def split_spec_lines(
             current_section = "domain"
             saw_domain_header = True
             continue
+
         if lowered == "[queries]":
             if saw_queries_header:
                 raise ParseError(f"{source_name}: duplicate [queries] section.")
@@ -356,26 +362,41 @@ def split_spec_lines(
             continue
 
         if require_explicit_sections and not current_section:
-            raise ParseError(f"{source_name}: missing [domain] section before the first statement.")
+            if section_text:
+                raise ParseError(f"{source_name}: missing [domain] section before the first statement.")
+            continue
 
         if current_section == "domain":
-            domain_lines.append(source_line)
+            domain_items.append(item)
         else:
-            query_lines.append(source_line)
+            query_items.append(item)
 
     if require_explicit_sections:
         if not saw_domain_header:
             raise ParseError(f"{source_name}: missing [domain] section.")
         if not saw_queries_header:
             raise ParseError(f"{source_name}: missing [queries] section.")
-        if not domain_lines:
+        if require_nonempty_sections and not any(text_getter(item) for item in domain_items):
             raise ParseError(f"{source_name}: no domain statements found.")
-        if not query_lines:
+        if require_nonempty_sections and not any(text_getter(item) for item in query_items):
             raise ParseError(f"{source_name}: no query statements found.")
-    elif not domain_lines and (saw_domain_header or saw_queries_header):
+    elif not any(text_getter(item) for item in domain_items) and (saw_domain_header or saw_queries_header):
         raise ParseError(f"{source_name}: no domain statements found.")
 
-    return domain_lines, query_lines
+    return domain_items, query_items
+
+
+def split_spec_lines(
+    lines: list[SourceLine],
+    source_name: str,
+    require_explicit_sections: bool = False,
+) -> tuple[list[SourceLine], list[SourceLine]]:
+    return split_section_items(
+        lines,
+        source_name,
+        text_getter=lambda line: line.text,
+        require_explicit_sections=require_explicit_sections,
+    )
 
 
 def parse_spec_lines(
@@ -388,14 +409,13 @@ def parse_spec_lines(
         source_name,
         require_explicit_sections=require_explicit_sections,
     )
-
     domain = parse_domain_lines(domain_lines)
     queries = parse_query_lines(query_lines)
     return domain, queries
 
 
 def parse_spec_file(path: Path) -> tuple[Domain, tuple[Query, ...]]:
-    return parse_spec_lines(read_lines(path), str(path), require_explicit_sections=True)
+    return parse_spec_text(path.read_text(encoding="utf-8"), str(path))
 
 
 def parse_spec_text(text: str, source_name: str = "<stdin>") -> tuple[Domain, tuple[Query, ...]]:
@@ -404,6 +424,46 @@ def parse_spec_text(text: str, source_name: str = "<stdin>") -> tuple[Domain, tu
         source_name,
         require_explicit_sections=True,
     )
+
+
+def split_spec_text_for_editor(text: str, source_name: str) -> tuple[str, str]:
+    domain_lines, query_lines = split_section_items(
+        text.splitlines(),
+        source_name,
+        text_getter=normalize_line,
+        require_explicit_sections=True,
+        require_nonempty_sections=False,
+    )
+
+    return "\n".join(domain_lines).strip(), "\n".join(query_lines).strip()
+
+
+def load_editor_texts_from_spec_path(path: Path) -> tuple[str, str]:
+    return split_spec_text_for_editor(path.read_text(encoding="utf-8"), str(path))
+
+
+def add_error_context(source_name: str, exc: ParseError) -> ParseError:
+    return ParseError(f"{source_name}: {exc}")
+
+
+def parse_domain_text(text: str, source_name: str = "<domain>") -> Domain:
+    lines = collect_source_lines(text.splitlines())
+    if not lines:
+        raise ParseError(f"{source_name}: no domain statements found.")
+    try:
+        return parse_domain_lines(lines)
+    except ParseError as exc:
+        raise add_error_context(source_name, exc) from exc
+
+
+def parse_queries_text(text: str, source_name: str = "<queries>") -> tuple[Query, ...]:
+    lines = collect_source_lines(text.splitlines())
+    if not lines:
+        return ()
+    try:
+        return parse_query_lines(lines)
+    except ParseError as exc:
+        raise add_error_context(source_name, exc) from exc
 
 
 def gather_signature(domain: Domain) -> tuple[tuple[str, ...], tuple[str, ...]]:
@@ -442,12 +502,13 @@ def validate_queries(queries: tuple[Query, ...], fluents: tuple[str, ...], actio
                     raise ParseError(
                         f"Line {query.source_line}: query references unknown action '{action}'."
                     )
-        else:
-            for action in query.program:
-                if action not in known_actions:
-                    raise ParseError(
-                        f"Line {query.source_line}: query references unknown action '{action}'."
-                    )
+            continue
+
+        for action in query.program:
+            if action not in known_actions:
+                raise ParseError(
+                    f"Line {query.source_line}: query references unknown action '{action}'."
+                )
 
 
 def all_states(num_fluents: int) -> tuple[tuple[bool, ...], ...]:
@@ -459,7 +520,9 @@ def all_states(num_fluents: int) -> tuple[tuple[bool, ...], ...]:
 
 
 def preconditions_hold(
-    state: tuple[bool, ...], preconditions: tuple[Literal, ...], index_by_fluent: dict[str, int]
+    state: tuple[bool, ...],
+    preconditions: tuple[Literal, ...],
+    index_by_fluent: dict[str, int],
 ) -> bool:
     return all(literal.holds_in(state, index_by_fluent) for literal in preconditions)
 
@@ -542,7 +605,11 @@ def run_program(
     return state, total_cost
 
 
-def state_satisfies(state: tuple[bool, ...], literals: tuple[Literal, ...], index_by_fluent: dict[str, int]) -> bool:
+def state_satisfies(
+    state: tuple[bool, ...],
+    literals: tuple[Literal, ...],
+    index_by_fluent: dict[str, int],
+) -> bool:
     return all(literal.holds_in(state, index_by_fluent) for literal in literals)
 
 
@@ -631,112 +698,398 @@ def format_state(state: tuple[bool, ...], fluents: tuple[str, ...]) -> str:
     return "{" + ", ".join(rendered) + "}"
 
 
-def format_editor_line_number(line_number: int, width: int | None = None) -> str:
-    prompt = f"{line_number}: "
-    return prompt if width is None else prompt.rjust(width)
+def render_context_output(
+    context: EvaluationContext,
+    queries: tuple[Query, ...],
+    *,
+    show_models: bool = False,
+) -> str:
+    if not context.models:
+        return INCONSISTENT_DOMAIN_MESSAGE
+
+    lines: list[str] = []
+
+    if show_models:
+        for index, model in enumerate(context.models, start=1):
+            lines.append(f"MODEL {index}: {format_state(model, context.fluents)}")
+
+    if queries:
+        for index, query in enumerate(queries, start=1):
+            lines.append(f"QUERY {index}: {query.render()}")
+            lines.append(f"RESULT {index}: {evaluate_query(query, context).value}")
+    else:
+        lines.append("No queries provided.")
+
+    return "\n".join(lines)
 
 
-def interactive_editor_banner_lines() -> tuple[str, ...]:
-    return (
-        "Press F5 or Ctrl+R to run.",
-        "Format:",
-        "[domain]",
-        "...",
-        "[queries]",
-        "...",
-        "",
-        "-" * 32,
-        "",
+def evaluate_inputs(
+    domain: Domain,
+    queries: tuple[Query, ...],
+    *,
+    show_models: bool = False,
+    domain_source_name: str | None = None,
+    query_source_name: str | None = None,
+) -> str:
+    try:
+        context = evaluate_domain(domain)
+    except ParseError as exc:
+        if domain_source_name is None:
+            raise
+        raise add_error_context(domain_source_name, exc) from exc
+
+    try:
+        validate_queries(queries, context.fluents, context.actions)
+    except ParseError as exc:
+        if query_source_name is None:
+            raise
+        raise add_error_context(query_source_name, exc) from exc
+
+    return render_context_output(context, queries, show_models=show_models)
+
+
+def render_evaluation_output(
+    domain: Domain,
+    queries: tuple[Query, ...],
+    *,
+    show_models: bool = False,
+) -> str:
+    return evaluate_inputs(domain, queries, show_models=show_models)
+
+
+def evaluate_text_fragments(
+    domain_text: str,
+    queries_text: str,
+    *,
+    show_models: bool = False,
+) -> str:
+    domain = parse_domain_text(domain_text, source_name="Domain window")
+    queries = parse_queries_text(queries_text, source_name="Queries window")
+    return evaluate_inputs(
+        domain,
+        queries,
+        show_models=show_models,
+        domain_source_name="Domain window",
+        query_source_name="Queries window",
     )
 
 
-def read_prompt_toolkit_spec_lines() -> list[SourceLine]:
-    for line in interactive_editor_banner_lines():
-        print(line)
+def interactive_status_text() -> str:
+    return "F5/Ctrl+R - Run   Esc/Ctrl+Q - Exit   F1 - Help   Ctrl+O - Open file"
+
+
+def interactive_help_text() -> str:
+    return "\n".join(
+        (
+            "Enter domain statements in the left pane.",
+            "Enter query statements in the right pane.",
+            "",
+            "Domain pane syntax:",
+            "  Value statements:",
+            "    fluent after action_1, action_2, ...",
+            "  Initial statements:",
+            "    initially fluent, !fluent, ...",
+            "  Effect statements:",
+            "    action causes fluent if fluent, !fluent, ...",
+            "    action causes fluent, !fluent if fluent, !fluent, ...",
+            "  Cost statements:",
+            "    action costs 5",
+            "",
+            "Queries pane syntax:",
+            "  Goal queries:",
+            "    fluent after action_1, action_2, ...",
+            "    fluent, !fluent after action_1, action_2, ...",
+            "  Cost bound queries:",
+            "    action_1, action_2 executable with cost 5",
+            "  Exact cost queries:",
+            "    action_1, action_2 executable with exact cost 5",
+            "",
+            "Domain input examples:",
+            "  initially !doorOpen, hasKey",
+            "  openDoor causes doorOpen if hasKey",
+            "  openDoor causes doorOpen, !alarmOn if hasKey",
+            "  openDoor costs 5",
+            "  doorOpen after openDoor",
+            "",
+            "Query input examples:",
+            "  doorOpen after openDoor",
+            "  doorOpen, !alarmOn after openDoor",
+            "  openDoor executable with cost 5",
+            "  openDoor executable with exact cost 5",
+            "",
+            "Opened file structure for Ctrl+O:",
+            "  [domain]",
+            "  ... domain statements ...",
+            "  [queries]",
+            "  ... query statements ...",
+            "",
+            "Shortcuts:",
+            "  Ctrl+O: open combined .krr or .txt spec file",
+            "  Tab / Shift+Tab: switch between Domain and Queries",
+            "  F5 / Ctrl+R: run compiler",
+            "  Esc / Ctrl+Q: exit",
+            "Press F1 again to hide this help.",
+        )
+    )
+
+
+def choose_interactive_spec_file() -> str:
+    from tkinter import Tk, filedialog
+
+    root = Tk()
+    root.withdraw()
+    root.update_idletasks()
+    root.attributes("-topmost", True)
+    try:
+        return filedialog.askopenfilename(
+            title="Open spec file",
+            filetypes=[
+                ("KRR or text files", "*.krr *.txt"),
+                ("All files", "*.*"),
+            ],
+        )
+    finally:
+        root.destroy()
+
+
+def load_interactive_workspace_texts(args: argparse.Namespace) -> tuple[str, str]:
+    validate_input_source_selection(args)
+
+    if args.spec_file:
+        spec_path = Path(args.spec_file)
+        return load_editor_texts_from_spec_path(spec_path)
+
+    domain_text = ""
+    query_text = ""
+    if args.domain_file:
+        domain_text = Path(args.domain_file).read_text(encoding="utf-8").strip()
+    if args.query_file:
+        query_text = Path(args.query_file).read_text(encoding="utf-8").strip()
+    return domain_text, query_text
+
+
+def run_interactive_workspace(
+    *,
+    show_models: bool = False,
+    initial_domain_text: str = "",
+    initial_queries_text: str = "",
+) -> int:
+    domain_area = TextArea(
+        text=initial_domain_text,
+        multiline=True,
+        scrollbar=True,
+        line_numbers=True,
+        wrap_lines=False,
+        focus_on_click=True,
+    )
+    query_area = TextArea(
+        text=initial_queries_text,
+        multiline=True,
+        scrollbar=True,
+        line_numbers=True,
+        wrap_lines=False,
+        focus_on_click=True,
+    )
+    output_area = TextArea(
+        text="",
+        multiline=True,
+        scrollbar=True,
+        wrap_lines=True,
+        read_only=True,
+        focusable=False,
+    )
+    status_area = TextArea(
+        text=interactive_status_text(),
+        multiline=False,
+        wrap_lines=False,
+        read_only=True,
+        focusable=False,
+        dont_extend_height=True,
+        height=1,
+    )
+    help_area = TextArea(
+        text=interactive_help_text(),
+        multiline=True,
+        wrap_lines=True,
+        scrollbar=True,
+        read_only=True,
+        focusable=True,
+        focus_on_click=True,
+        dont_extend_height=True,
+        height=18,
+    )
+    show_help = {"value": False}
+
+    help_panel = ConditionalContainer(
+        content=Frame(help_area, title="Help"),
+        filter=Condition(lambda: show_help["value"]),
+    )
+
+    def run_current_buffers() -> None:
+        try:
+            output_area.text = evaluate_text_fragments(
+                domain_area.text,
+                query_area.text,
+                show_models=show_models,
+            )
+        except (OSError, ParseError) as exc:
+            output_area.text = f"ERROR: {exc}"
 
     bindings = KeyBindings()
 
     @bindings.add("f5")
     @bindings.add("c-r")
-    def submit_buffer(event) -> None:
-        event.app.exit(result=event.current_buffer.text)
+    def run_compiler(_event) -> None:
+        run_current_buffers()
 
-    session = PromptSession(multiline=True)
-    try:
-        raw_text = session.prompt(
-            format_editor_line_number(1),
-            key_bindings=bindings,
-            prompt_continuation=lambda width, line_number, is_soft_wrap: (
-                " " * width
-                if is_soft_wrap
-                else format_editor_line_number(line_number + 1, width)
+    @bindings.add("c-o")
+    def open_file(event) -> None:
+        async def choose_and_load() -> None:
+            try:
+                selected_path = await run_in_terminal(choose_interactive_spec_file, in_executor=True)
+            except Exception as exc:
+                output_area.text = f"ERROR: {exc}"
+                event.app.invalidate()
+                return
+
+            if not selected_path:
+                event.app.invalidate()
+                return
+
+            try:
+                domain_text, query_text = load_editor_texts_from_spec_path(Path(selected_path))
+            except (OSError, ParseError) as exc:
+                output_area.text = f"ERROR: {exc}"
+            else:
+                domain_area.text = domain_text
+                query_area.text = query_text
+                output_area.text = ""
+                show_help["value"] = False
+                event.app.layout.focus(domain_area)
+            event.app.invalidate()
+
+        event.app.create_background_task(choose_and_load())
+
+    @bindings.add("f1")
+    def toggle_help(event) -> None:
+        show_help["value"] = not show_help["value"]
+        if show_help["value"]:
+            event.app.layout.focus(help_area)
+        elif event.app.layout.has_focus(help_area):
+            event.app.layout.focus(domain_area)
+        event.app.invalidate()
+
+    @bindings.add("tab")
+    def focus_next(event) -> None:
+        if event.app.layout.has_focus(domain_area):
+            event.app.layout.focus(query_area)
+        else:
+            event.app.layout.focus(domain_area)
+
+    @bindings.add("s-tab")
+    def focus_previous(event) -> None:
+        if event.app.layout.has_focus(query_area):
+            event.app.layout.focus(domain_area)
+        else:
+            event.app.layout.focus(query_area)
+
+    @bindings.add("escape")
+    @bindings.add("c-q")
+    def quit_editor(event) -> None:
+        event.app.exit(result=None)
+
+    main_container = HSplit(
+        [
+            status_area,
+            VSplit(
+                [
+                    Frame(domain_area, title="Domain"),
+                    Frame(query_area, title="Queries"),
+                ],
+                padding=1,
             ),
-        )
-    except EOFError as exc:
-        raise ParseError("Interactive input ended before the specification was submitted.") from exc
-    except KeyboardInterrupt as exc:
-        raise ParseError("Interactive input was cancelled.") from exc
+            Frame(
+                output_area,
+                title="Output",
+                height=Dimension(min=8, preferred=10),
+            ),
+        ],
+        padding=1,
+    )
 
-    return collect_source_lines(raw_text.splitlines())
+    root_container = FloatContainer(
+        content=main_container,
+        floats=[
+            Float(
+                content=help_panel,
+                top=1,
+                bottom=1,
+                left=2,
+                right=2,
+                z_index=10,
+            )
+        ],
+    )
+
+    app = Application(
+        layout=Layout(root_container, focused_element=domain_area),
+        key_bindings=bindings,
+        full_screen=True,
+        mouse_support=True,
+    )
+    app.run()
+    return 0
 
 
-def read_interactive_spec_lines() -> list[SourceLine]:
-    if sys.stdin.isatty() and sys.stdout.isatty():
-        return read_prompt_toolkit_spec_lines()
-
+def load_interactive_inputs_from_stream() -> LoadedInputs:
     raw_text = sys.stdin.read()
     if not raw_text.strip():
         raise ParseError("Interactive input ended before the specification was submitted.")
-    return collect_source_lines(raw_text.splitlines())
+    domain, queries = parse_spec_text(raw_text, "<interactive>")
+    return LoadedInputs(domain=domain, queries=queries)
 
 
-def load_interactive_inputs() -> LoadedInputs:
-    domain, queries = parse_spec_lines(
-        read_interactive_spec_lines(),
-        "<interactive>",
-        require_explicit_sections=True,
-    )
-    return LoadedInputs(domain=domain, queries=queries, interactive_session=True)
+def validate_input_source_selection(args: argparse.Namespace) -> None:
+    if args.spec_file and (args.domain_file or args.query_file):
+        raise ParseError("Use either a combined spec file or separate --domain-file/--query-file inputs.")
 
 
 def load_inputs(args: argparse.Namespace) -> LoadedInputs:
+    validate_input_source_selection(args)
+
     if args.interactive:
-        return load_interactive_inputs()
+        return load_interactive_inputs_from_stream()
 
     if args.spec_file:
         domain, queries = parse_spec_file(Path(args.spec_file))
-        if args.domain_file or args.query_file:
-            raise ParseError("Use either a combined spec file or separate --domain-file/--query-file inputs.")
-        return LoadedInputs(domain=domain, queries=queries, interactive_session=False)
+        return LoadedInputs(domain=domain, queries=queries)
 
     if not sys.stdin.isatty():
         piped_text = sys.stdin.read()
         domain, queries = parse_spec_text(piped_text)
-        return LoadedInputs(domain=domain, queries=queries, interactive_session=False)
+        return LoadedInputs(domain=domain, queries=queries)
 
-    if not args.domain_file:
-        return load_interactive_inputs()
+    if args.domain_file:
+        domain = parse_domain_lines(read_lines(Path(args.domain_file)))
+        queries = parse_query_lines(read_lines(Path(args.query_file))) if args.query_file else ()
+        return LoadedInputs(domain=domain, queries=queries)
 
-    domain = parse_domain_lines(read_lines(Path(args.domain_file)))
-    queries = parse_query_lines(read_lines(Path(args.query_file))) if args.query_file else ()
-    return LoadedInputs(domain=domain, queries=queries, interactive_session=False)
+    raise ParseError("No input provided.")
 
 
 def build_argument_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(
-        description="Compile and evaluate DS4 action-cost."
-    )
+    parser = argparse.ArgumentParser(description="Compile and evaluate DS4 action-cost.")
     parser.add_argument(
         "spec_file",
         nargs="?",
-        help="Combined spec file with optional [domain] and [queries] sections.",
+        help="Combined spec file with [domain] and [queries] sections.",
     )
     parser.add_argument("--domain-file", help="Domain file when domain and queries are split.")
     parser.add_argument("--query-file", help="Query file when domain and queries are split.")
     parser.add_argument(
         "--interactive",
         action="store_true",
-        help="Read domain and queries from keyboard prompts instead of files.",
+        help="Open the interactive editor instead of reading from files.",
     )
     parser.add_argument(
         "--show-models",
@@ -746,9 +1099,18 @@ def build_argument_parser() -> argparse.ArgumentParser:
     return parser
 
 
+def uses_interactive_entrypoint(args: argparse.Namespace) -> bool:
+    return args.interactive or (not args.spec_file and not args.domain_file)
+
+
+def should_use_interactive_workspace(args: argparse.Namespace) -> bool:
+    if not (sys.stdin.isatty() and sys.stdout.isatty()):
+        return False
+    return uses_interactive_entrypoint(args)
+
+
 def should_pause_on_exit(
     args: argparse.Namespace,
-    interactive_session: bool = False,
     *,
     stdin_isatty: bool | None = None,
     stdout_isatty: bool | None = None,
@@ -758,7 +1120,7 @@ def should_pause_on_exit(
     if not (input_is_tty and output_is_tty):
         return False
 
-    return interactive_session or args.interactive or (not args.spec_file and not args.domain_file)
+    return uses_interactive_entrypoint(args)
 
 
 def pause_before_exit() -> None:
@@ -772,37 +1134,35 @@ def main(argv: list[str] | None = None) -> int:
     parser = build_argument_parser()
     args = parser.parse_args(argv)
 
+    if should_use_interactive_workspace(args):
+        try:
+            initial_domain_text, initial_queries_text = load_interactive_workspace_texts(args)
+            return run_interactive_workspace(
+                show_models=args.show_models,
+                initial_domain_text=initial_domain_text,
+                initial_queries_text=initial_queries_text,
+            )
+        except (OSError, ParseError) as exc:
+            print(f"ERROR: {exc}", file=sys.stderr)
+            return 1
+
     try:
         loaded = load_inputs(args)
-        context = evaluate_domain(loaded.domain)
-        validate_queries(loaded.queries, context.fluents, context.actions)
+        output = render_evaluation_output(
+            loaded.domain,
+            loaded.queries,
+            show_models=args.show_models,
+        )
     except (OSError, ParseError) as exc:
         print(f"ERROR: {exc}", file=sys.stderr)
         if should_pause_on_exit(args):
             pause_before_exit()
         return 1
 
-    if not context.models:
-        print("DOMAIN STATUS: inconsistent (no model satisfies all value/effect statements)")
+    if output:
+        print(output)
 
-    if args.show_models and context.models:
-        for index, model in enumerate(context.models, start=1):
-            print(f"MODEL {index}: {format_state(model, context.fluents)}")
-
-    if loaded.queries:
-        for index, query in enumerate(loaded.queries, start=1):
-            if isinstance(query, GoalQuery):
-                rendered = query.render()
-            elif isinstance(query, MaxCostQuery):
-                rendered = query.render()
-            else:
-                rendered = query.render()
-            print(f"QUERY {index}: {rendered}")
-            print(f"RESULT {index}: {evaluate_query(query, context).value}")
-    elif context.models:
-        print("No queries provided.")
-
-    if should_pause_on_exit(args, interactive_session=loaded.interactive_session):
+    if should_pause_on_exit(args):
         pause_before_exit()
 
     return 0
