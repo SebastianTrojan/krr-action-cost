@@ -465,7 +465,120 @@ These constraints are inconsistent.
 
 All queries are undefined since no model exists.
 
+\subsection{Example 6: The Vault Room}
+Let's consider a scenario involving a vault room protected by wards and physical security layers and a thief that wants to access the vault illegally. He was given a key, but is not sure whether it is the key to the vault he plans to rob, and has no way to check it. Smashing the door is loud and it triggers the alarm and costs physical effort, but it always opens the door. Picking the lock is elegant and quiet, but it requires the key the thief has to be the right one for the lock to work and bypass the vault's wards, otherwise it completely fails.
 
+\subsubsection{Action Domain Statements}
+\[
+\text{initially}~ \neg doorUnlocked
+\]
+\[
+\text{initially}~ \neg alarmActive
+\]
+\[
+doorUnlocked ~\text{after}~ pickLock, smashDoor
+\]
+\[
+pickLock ~\text{causes}~ doorUnlocked ~\text{if}~ hasKey
+\]
+\[
+smashDoor ~\text{causes}~ doorUnlocked
+\]
+\[
+smashDoor ~\text{causes}~ alarmActive
+\]
+\[
+pickLock ~\text{costs}~ 2
+\]
+\[
+smashDoor ~\text{costs}~ 8
+\]
+
+\subsubsection{Program}
+\[
+P = (pickLock, smashDoor)
+\]
+
+\subsubsection{Completions of $\sigma_0$}
+Because the status of the fluent $hasKey$ is left unspecified by the initial historical assumptions, we must generate all possible complete initial states:
+\[
+\sigma_0^1 = \{\neg doorUnlocked, \neg alarmActive, hasKey\}
+\]
+\[
+\sigma_0^2 = \{\neg doorUnlocked, \neg alarmActive, \neg hasKey\}
+\]
+
+\parr
+However, $\sigma_0^2$ is not consistent with the value statement constraint in the action domain.
+Let us evaluate its branch:
+\begin{enumerate}
+    \item \textbf{Action 1 ($pickLock$):} Since $hasKey$ does not hold in $\sigma_0^2$, the conditional effect does not apply. By the law of inertia, the state remains completely unchanged:
+    \[ \Psi(pickLock, \sigma_0^2) \models \neg doorUnlocked \]
+    \item \textbf{Action 2 ($smashDoor$):} The execution continues to the final state:
+    \[ \Psi^\star((pickLock, smashDoor), \sigma_0^2) \models doorUnlocked \]
+\end{enumerate}
+But our structural rules dictate that a multi-step value statement $f ~\text{after}~ A_1, \ldots, A_n$ enforces satisfaction at \emph{every} intermediary path step where that action prefix sequence resolves. The constraint $doorUnlocked ~\text{after}~ pickLock, smashDoor$ demands that:
+\[ \Psi(pickLock, \sigma_0^2) \models doorUnlocked \]
+This yields a direct contradiction with our step 1 transition evaluation. Therefore, the completion $\sigma_0^2$ is invalid and is completely filtered out of the model construction phase.
+
+\subsubsection{Execution}
+Thus, the only valid, consistent initial state structure is:
+\[
+\sigma_0 = \{\neg doorUnlocked, \neg alarmActive, hasKey\}
+\]
+
+\paragraph{Action 1: $pickLock$}
+The precondition $hasKey$ holds true, meaning the postcondition triggers successfully:
+\[
+\sigma_1 = \{doorUnlocked, \neg alarmActive, hasKey\}
+\]
+Cost calculation: Since $\Psi(pickLock, \sigma_0) \neq \sigma_0$, the full cost statement maps:
+\[
+Cost(pickLock, \sigma_0) = 2
+\]
+
+\paragraph{Action 2: $smashDoor$}
+Both effects of the smashing operation execute unconditionally:
+\[
+\sigma_2 = \{doorUnlocked, alarmActive, hasKey\}
+\]
+Cost calculation: While $doorUnlocked$ was already true and remains unchanged, the fluent $alarmActive$ transitions from false to true. Because a state transition occurred ($\Psi(smashDoor, \sigma_1) \neq \sigma_1$), the empty effect rule does not apply:
+\[
+Cost(smashDoor, \sigma_1) = 8
+\]
+
+\paragraph{Total Program Cost}
+\[
+Cost^\star(P) = 2 + 8 = 10
+\]
+
+\subsubsection{Final States}
+\[
+\{\sigma_2\}
+\]
+
+\subsubsection{Query Results}
+
+\paragraph{Q1: Goal Satisfaction}
+\[
+\{doorUnlocked, alarmActive\} ~\text{after}~ pickLock, smashDoor
+\]
+is true because both literals explicitly hold in the singular final state space model $\sigma_2$.
+
+\paragraph{Q2: Executability with Cost}
+\[
+pickLock, smashDoor ~\text{executable with cost}~ 10
+\]
+is true since for all valid executions:
+\[
+Cost^\star(P) \leq 10
+\]
+
+\paragraph{Q3: Executability with exact Cost}
+\[
+pickLock, smashDoor ~\text{executable with exact cost}~ 10
+\]
+is true because the alternative inconsistent branch was eliminated, ensuring that $Cost^\star(P) = 10$ holds deterministically across all true models of the domain.
 
 
 \end{document}

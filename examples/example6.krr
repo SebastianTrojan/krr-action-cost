@@ -1,0 +1,14 @@
+[domain]
+initially !doorUnlocked
+initially !alarmActive
+doorUnlocked after smashDoor, pickLock
+pickLock causes doorUnlocked if hasTrueKey
+smashDoor causes doorUnlocked
+smashDoor causes alarmActive
+pickLock costs 2
+smashDoor costs 8
+
+[queries]
+doorUnlocked, alarmActive after pickLock, smashDoor
+pickLock, smashDoor executable with cost 10
+pickLock, smashDoor executable with exact cost 10
