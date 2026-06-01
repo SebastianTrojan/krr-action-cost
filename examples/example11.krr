@@ -1,0 +1,14 @@
+[domain]
+initially !doorOpen
+initially mechanismJammed
+doorOpen after unlockDoor
+doorOpen after forceOpen
+unlockDoor causes doorUnlocked if !mechanismJammed
+forceOpen causes doorOpen if doorUnlocked
+unlockDoor costs 3
+forceOpen costs 5
+
+[queries]
+{doorOpen} after unlockDoor, forceOpen
+!doorOpen after unlockDoor, forceOpen
+forceOpen executable with cost 3

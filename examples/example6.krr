@@ -1,7 +1,8 @@
 [domain]
 initially !doorUnlocked
 initially !alarmActive
-doorUnlocked after smashDoor, pickLock
+doorUnlocked after smashDoor
+doorUnlocked after pickLock
 pickLock causes doorUnlocked if hasTrueKey
 smashDoor causes doorUnlocked
 smashDoor causes alarmActive

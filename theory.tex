@@ -856,4 +856,156 @@ is true, since $buff$ produces an empty effect after the piece is polished.
 buff, buff ~\text{executable with exact cost}~ 2
 \]
 is true, for the same reason.
+\subsection{Example 10: The Smart Greenhouse}
+Let us consider a scenario in an automated greenhouse where actions may yield empty effects depending on environmental resources.
+
+\subsubsection{Action Domain Statements}
+\[
+\text{initially}~ soilDry
+\]
+\[
+\text{initially}~ \neg pumpActive
+\]
+\[
+startPump ~\text{causes}~ \neg soilDry ~\text{if}~ \neg waterLow
+\]
+\[
+startPump ~\text{causes}~ pumpActive ~\text{if}~ \neg waterLow
+\]
+\[
+checkReservoir ~\text{causes}~ \neg waterLow
+\]
+\[
+startPump ~\text{costs}~ 5
+\]
+\[
+checkReservoir ~\text{costs}~ 2
+\]
+
+\subsubsection{Program}
+\[
+P = (startPump, checkReservoir)
+\]
+
+\subsubsection{Completions of $\sigma_0$}
+Since the status of $waterLow$ is omitted from the initial historical properties, the system branches into two valid complete states:
+\[
+\sigma_0^1 = \{soilDry, \neg pumpActive, \neg waterLow\}
+\]
+\[
+\sigma_0^2 = \{soilDry, \neg pumpActive, waterLow\}
+\]
+
+\subsubsection{Execution Path 1 ($\sigma_0^1$)}
+\paragraph{Action 1 ($startPump$):} The precondition $\neg waterLow$ holds true. The effects trigger successfully:
+\[
+\sigma_1^1 = \{\neg soilDry, pumpActive, \neg waterLow\}
+\]
+Cost calculation: A state change occurred ($\Psi(startPump, \sigma_0^1) \neq \sigma_0^1$), so the full cost is applied:
+\[
+Cost(startPump, \sigma_0^1) = 5
+\]
+
+\paragraph{Action 2 ($checkReservoir$):} The action attempts to ensure water is not low. Because $\neg waterLow$ is already true, the state remains completely identical:
+\[
+\sigma_2^1 = \{\neg soilDry, pumpActive, \neg waterLow\}
+\]
+Cost calculation: Since $\Psi(checkReservoir, \sigma_1^1) = \sigma_1^1$, it results in an empty effect, driving the cost to zero:
+\[
+Cost(checkReservoir, \sigma_1^1) = 0
+\]
+\[
+\text{Total } Cost^\star(P) = 5 + 0 = 5
+\]
+
+\subsubsection{Execution Path 2 ($\sigma_0^2$)}
+\paragraph{Action 1 ($startPump$):} The precondition $\neg waterLow$ fails. By the law of inertia, no fluents change:
+\[
+\sigma_1^2 = \{soilDry, \neg pumpActive, waterLow\}
+\]
+Cost calculation: Because $\Psi(startPump, \sigma_0^2) = \sigma_0^2$, the empty effect rule dictates the cost drops to zero:
+\[
+Cost(startPump, \sigma_0^2) = 0
+\]
+
+\paragraph{Action 2 ($checkReservoir$):} The effect triggers unconditionally, shifting $waterLow$ to false:
+\[
+\sigma_2^2 = \{soilDry, \neg pumpActive, \neg waterLow\}
+\]
+Cost calculation: The state successfully changed, forcing the cost assignment:
+\[
+Cost(checkReservoir, \sigma_1^2) = 2
+\]
+\[
+\text{Total } Cost^\star(P) = 0 + 2 = 2
+\]
+
+\subsubsection{Query Results}
+\[
+P ~\text{executable with cost}~ 4 \quad \text{(False, because } 5 \le 4 \text{ and } 2 \le 4\text{)}
+\]
+\[
+P ~\text{executable with exact cost}~ 4 \quad \text{(False, because program is not even executable with cost 4)}
+\]
+\subsection{Example 11: The Jammed Door via Single-Action Constraints (Inconsistent Domain)}
+This example refines the jammed mechanism scenario by using strictly single-action value statements to enforce a historical observation midway through the plan execution timeline. This formulation exposes the physical impossibility of the system state trajectory, allowing the solver to correctly flag the domain as inconsistent.
+
+\subsubsection{Action Domain Statements}
+\[
+\text{initially}~ \neg doorOpen
+\]
+\[
+\text{initially}~ \neg doorUnlocked
+\]
+\[
+\text{initially}~ mechanismJammed
+\]
+\[
+doorUnlocked ~\text{after}~ unlockDoor
+\]
+\[
+unlockDoor ~\text{causes}~ doorUnlocked ~\text{if}~ \neg mechanismJammed
+\]
+\[
+forceOpen ~\text{causes}~ doorOpen ~\text{if}~ doorUnlocked
+\]
+\[
+unlockDoor ~\text{costs}~ 3
+\]
+\[
+forceOpen ~\text{costs}~ 5
+\]
+
+\subsubsection{Program}
+\[
+P = (unlockDoor, forceOpen)
+\]
+
+\subsubsection{Completions of $\sigma_0$}
+The domain completely specifies the values of all system fluents at the origin of time. Hence, the initial configuration generates a single complete state representation:
+\[
+\sigma_0 = \{\neg doorOpen, \neg doorUnlocked, mechanismJammed\}
+\]
+
+\subsubsection{Execution and Consistency Checking}
+We evaluate the state transition step-by-step from $\sigma_0$ under the action rules:
+\begin{enumerate}
+    \item \textbf{Action 1 ($unlockDoor$):} The system attempts to process the transition $\Psi(unlockDoor, \sigma_0)$. The associated effect rule requires that $\neg mechanismJammed$ holds true. However, because $mechanismJammed$ is true in $\sigma_0$, the precondition fails. By the law of inertia, the action produces an empty effect, yielding:
+    \[ \sigma_1 = \Psi(unlockDoor, \sigma_0) = \{\neg doorOpen, \neg doorUnlocked, mechanismJammed\} \]
+\end{enumerate}
+
+Next, the semantic framework validates the structure against the action language value statement constraints. The domain includes the single-action observation statement:
+\[ doorUnlocked ~\text{after}~ unlockDoor \]
+By semantic definition, a structure satisfies this statement if and only if the fluent holds in the state immediately following the action's execution:
+\[ \Psi(unlockDoor, \sigma_0) \models doorUnlocked \]
+
+
+
+However, the transition rules evaluated via inertia explicitly proved that $\sigma_1 \models \neg doorUnlocked$. Because a valid state assignment cannot simultaneously contain a fluent and its logical negation, no transition function can reconcile the observation constraint with the environmental physics.
+
+Therefore, no valid structure exists for this setup, and the system correctly terminates during compilation with a status of:
+\[ \text{\textbf{DOMAIN STATUS: inconsistent}} \]
+
+\subsubsection{Query Results}
+Because no model can be constructed to satisfy the underlying constraints of the dynamic domain, all downstream query validations are structurally precluded from running. The query state evaluations are formally defined as \textbf{undefined}.
 \end{document}

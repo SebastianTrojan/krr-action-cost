@@ -1,0 +1,13 @@
+[domain]
+initially soilDry
+initially !pumpActive
+startPump causes !soilDry if !waterLow
+startPump causes pumpActive if !waterLow
+checkReservoir causes !waterLow
+startPump costs 5
+checkReservoir costs 2
+
+[queries]
+{soilDry} after startPump, checkReservoir
+startPump, checkReservoir executable with cost 4
+startPump, checkReservoir executable with exact cost 4
