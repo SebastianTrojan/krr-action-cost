@@ -1,0 +1,18 @@
+[domain]
+initially !polished
+polished after polish
+polish causes polished if clean
+clean after polish
+polish costs 4
+buff causes polished
+buff costs 2
+
+[queries]
+polished after polish
+clean after polish
+polished after buff
+polish executable with exact cost 4
+polish, polish executable with exact cost 4
+polish, buff executable with exact cost 4
+buff executable with exact cost 2
+buff, buff executable with exact cost 2

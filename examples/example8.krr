@@ -1,0 +1,11 @@
+[domain]
+initially !heated
+warmUp causes heated if powered
+warmUp costs 6
+
+[queries]
+heated after warmUp
+heated after warmUp, warmUp
+warmUp executable with cost 6
+warmUp executable with exact cost 6
+warmUp, warmUp executable with cost 6

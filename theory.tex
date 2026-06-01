@@ -465,10 +465,10 @@ These constraints are inconsistent.
 
 All queries are undefined since no model exists.
 
-\subsection{Example 6: The Vault Room}
+\subsection*{Example 6: The Vault Room}
 Let's consider a scenario involving a vault room protected by wards and physical security layers and a thief that wants to access the vault illegally. He was given a key, but is not sure whether it is the key to the vault he plans to rob, and has no way to check it. Smashing the door is loud and it triggers the alarm and costs physical effort, but it always opens the door. Picking the lock is elegant and quiet, but it requires the key the thief has to be the right one for the lock to work and bypass the vault's wards, otherwise it completely fails.
 
-\subsubsection{Action Domain Statements}
+\subsubsection*{Action Domain Statements}
 \[
 \text{initially}~ \neg doorUnlocked
 \]
@@ -494,12 +494,12 @@ pickLock ~\text{costs}~ 2
 smashDoor ~\text{costs}~ 8
 \]
 
-\subsubsection{Program}
+\subsubsection*{Program}
 \[
 P = (pickLock, smashDoor)
 \]
 
-\subsubsection{Completions of $\sigma_0$}
+\subsubsection*{Completions of $\sigma_0$}
 Because the status of the fluent $hasKey$ is left unspecified by the initial historical assumptions, we must generate all possible complete initial states:
 \[
 \sigma_0^1 = \{\neg doorUnlocked, \neg alarmActive, hasKey\}
@@ -521,7 +521,7 @@ But our structural rules dictate that a multi-step value statement $f ~\text{aft
 \[ \Psi(pickLock, \sigma_0^2) \models doorUnlocked \]
 This yields a direct contradiction with our step 1 transition evaluation. Therefore, the completion $\sigma_0^2$ is invalid and is completely filtered out of the model construction phase.
 
-\subsubsection{Execution}
+\subsubsection*{Execution}
 Thus, the only valid, consistent initial state structure is:
 \[
 \sigma_0 = \{\neg doorUnlocked, \neg alarmActive, hasKey\}
@@ -552,12 +552,12 @@ Cost(smashDoor, \sigma_1) = 8
 Cost^\star(P) = 2 + 8 = 10
 \]
 
-\subsubsection{Final States}
+\subsubsection*{Final States}
 \[
 \{\sigma_2\}
 \]
 
-\subsubsection{Query Results}
+\subsubsection*{Query Results}
 
 \paragraph{Q1: Goal Satisfaction}
 \[
@@ -580,5 +580,280 @@ pickLock, smashDoor ~\text{executable with exact cost}~ 10
 \]
 is true because the alternative inconsistent branch was eliminated, ensuring that $Cost^\star(P) = 10$ holds deterministically across all true models of the domain.
 
+\subsection*{Example 7: The Light Switch}
+Let's consider a scenario with a light controlled by a switch that can be flipped off and back on, and which can also be permanently locked. Flipping the switch only works while the switch is unlocked; once locked, any further flip has no effect at all.
+\subsubsection*{Action Domain Statements}
+\[
+\text{initially}~ lightOn
+\]
+\[
+\text{initially}~ \neg switchLocked
+\]
+\[
+flipOff ~\text{causes}~ \neg lightOn ~\text{if}~ \neg switchLocked
+\]
+\[
+flipOn ~\text{causes}~ lightOn ~\text{if}~ \neg switchLocked
+\]
+\[
+lockSwitch ~\text{causes}~ switchLocked
+\]
+\[
+flipOff ~\text{costs}~ 3
+\]
+\[
+flipOn ~\text{costs}~ 4
+\]
+\[
+lockSwitch ~\text{costs}~ 1
+\]
+\subsubsection*{Completions of $\sigma_0$}
+Both fluents are fixed by the initial statements, so the initial state is complete and the model is unique:
+\[
+\sigma_0 = \{lightOn, \neg switchLocked\}
+\]
+\subsubsection*{Execution}
+\paragraph{Program $(flipOff, flipOn)$}
+The precondition $\neg switchLocked$ holds, so $flipOff$ turns the light off:
+\[
+\sigma_1 = \{\neg lightOn, \neg switchLocked\}
+\]
+\[
+Cost(flipOff, \sigma_0) = 3
+\]
+The precondition still holds, so $flipOn$ turns the light back on:
+\[
+\sigma_2 = \{lightOn, \neg switchLocked\}
+\]
+\[
+Cost(flipOn, \sigma_1) = 4
+\]
+\[
+Cost^\star(P) = 3 + 4 = 7
+\]
+\paragraph{Program $(flipOff, flipOff)$}
+The first $flipOff$ costs 3 as above. The second $flipOff$ finds $lightOn$ already false, so no change occurs:
+\[
+Cost(flipOff, \sigma_1) = 0
+\]
+\[
+Cost^\star(P) = 3 + 0 = 3
+\]
+\paragraph{Program $(lockSwitch, flipOff)$}
+The action $lockSwitch$ sets the fluent $switchLocked$:
+\[
+\sigma_1 = \{lightOn, switchLocked\}
+\]
+\[
+Cost(lockSwitch, \sigma_0) = 1
+\]
+Now the precondition $\neg switchLocked$ of $flipOff$ is violated, so the action has an empty effect and the empty effect rule applies:
+\[
+\sigma_2 = \{lightOn, switchLocked\}
+\]
+\[
+Cost(flipOff, \sigma_1) = 0
+\]
+\[
+Cost^\star(P) = 1 + 0 = 1
+\]
+\subsubsection*{Query Results}
+\paragraph{Q1: Goal Satisfaction}
+\[
+\{\neg lightOn\} ~\text{after}~ flipOff
+\]
+is true.
+\[
+\{lightOn\} ~\text{after}~ flipOff, flipOn
+\]
+is true, since the light is turned off and then back on.
+\[
+\{\neg lightOn\} ~\text{after}~ lockSwitch, flipOff
+\]
+is false, because locking the switch first turns the subsequent $flipOff$ into an empty effect and the light stays on.
+\paragraph{Q2 and Q3: Executability with Cost}
+\[
+flipOff, flipOn ~\text{executable with exact cost}~ 7
+\]
+is true since $Cost^\star(P) = 7$.
+\[
+flipOff, flipOff ~\text{executable with exact cost}~ 3
+\]
+is true, because the repeated $flipOff$ has an empty effect and adds zero cost.
+\[
+lockSwitch, flipOff ~\text{executable with exact cost}~ 1
+\]
+is true, because the blocked $flipOff$ contributes no cost.
 
+\subsection*{Example 8: The Heater}
+Let's consider a heater that warms a room, but only when the room is powered. The power status is unknown in the initial state, and there is no value statement to settle it, so both possibilities must be considered.
+\subsubsection*{Action Domain Statements}
+\[
+\text{initially}~ \neg heated
+\]
+\[
+warmUp ~\text{causes}~ heated ~\text{if}~ powered
+\]
+\[
+warmUp ~\text{costs}~ 6
+\]
+\subsubsection*{Program}
+\[
+P = (warmUp)
+\]
+\subsubsection*{Completions of $\sigma_0$}
+The fluent $powered$ is left unspecified, so two completions arise, and both are consistent since no value statement filters either out:
+\[
+\sigma_0^1 = \{\neg heated, powered\}
+\]
+\[
+\sigma_0^2 = \{\neg heated, \neg powered\}
+\]
+\subsubsection*{Execution}
+\paragraph{Case 1: $\sigma_0^1$}
+Precondition holds, so:
+\[
+\sigma_1^1 = \{heated, powered\}
+\]
+Cost:
+\[
+Cost^\star(P) = 6
+\]
+\paragraph{Case 2: $\sigma_0^2$}
+Precondition does not hold, so:
+\[
+\sigma_1^2 = \{\neg heated, \neg powered\}
+\]
+Cost:
+\[
+Cost^\star(P) = 0
+\]
+\subsubsection*{Final States}
+\[
+\{\sigma_1^1, \sigma_1^2\}
+\]
+\subsubsection*{Query Results}
+\paragraph{Q1: Goal Satisfaction}
+\[
+\{heated\} ~\text{after}~ warmUp
+\]
+is false because $heated$ does not hold in all final states.
+\[
+\{heated\} ~\text{after}~ warmUp, warmUp
+\]
+is false for the same reason.
+\paragraph{Q2 and Q3: Executability with Cost}
+\[
+P ~\text{executable with cost}~ 6
+\]
+is true since for all executions:
+\[
+Cost^\star(P) \leq 6
+\]
+\[
+P ~\text{executable with exact cost}~ 6
+\]
+is false since $Cost^\star(P)$ is not always 6.
+\[
+warmUp, warmUp ~\text{executable with cost}~ 6
+\]
+is true, because the second $warmUp$ is idempotent in the powered branch, so the total cost remains 6.
+
+\subsection*{Example 9: The Polishing Bench}
+Let's consider a workpiece that can be polished or buffed. Polishing requires the piece to be clean, and a value statement enforces that polishing always yields a polished piece. The cleanliness of the piece is unspecified initially, but the value statements collapse this uncertainty to a single model.
+\subsubsection*{Action Domain Statements}
+\[
+\text{initially}~ \neg polished
+\]
+\[
+polished ~\text{after}~ polish
+\]
+\[
+polish ~\text{causes}~ polished ~\text{if}~ clean
+\]
+\[
+clean ~\text{after}~ polish
+\]
+\[
+polish ~\text{costs}~ 4
+\]
+\[
+buff ~\text{causes}~ polished
+\]
+\[
+buff ~\text{costs}~ 2
+\]
+\subsubsection*{Completions of $\sigma_0$}
+The fluent $clean$ is unspecified, giving two candidate completions:
+\[
+\sigma_0^1 = \{\neg polished, clean\}
+\]
+\[
+\sigma_0^2 = \{\neg polished, \neg clean\}
+\]
+However, $\sigma_0^2$ is not consistent with the action domain.
+Indeed, since $clean$ does not hold, the conditional effect of $polish$ does not apply, and by inertia:
+\[
+\Psi(polish, \sigma_0^2) \models \neg polished
+\]
+But the value statement requires:
+\[
+\Psi(polish, \sigma_0^2) \models polished
+\]
+This is a contradiction. Therefore, $\sigma_0^2$ is not allowed.
+\subsubsection*{Execution}
+Thus, the only possible initial state is:
+\[
+\sigma_0 = \{\neg polished, clean\}
+\]
+\paragraph{Action $polish$}
+The precondition $clean$ holds, so $polished$ becomes true while $clean$ is untouched:
+\[
+\sigma_1 = \{polished, clean\}
+\]
+\[
+Cost(polish, \sigma_0) = 4
+\]
+\paragraph{Repeated actions}
+A second $polish$, or a following $buff$, finds $polished$ already true, so no change occurs and the empty effect rule gives cost 0.
+\subsubsection*{Final States}
+\[
+\{\sigma_1\}
+\]
+\subsubsection*{Query Results}
+\paragraph{Q1: Goal Satisfaction}
+\[
+\{polished\} ~\text{after}~ polish
+\]
+is true.
+\[
+\{clean\} ~\text{after}~ polish
+\]
+is true.
+\[
+\{polished\} ~\text{after}~ buff
+\]
+is true.
+\paragraph{Q2: Executability with Cost}
+\[
+polish ~\text{executable with exact cost}~ 4
+\]
+is true.
+\[
+buff ~\text{executable with exact cost}~ 2
+\]
+is true.
+\paragraph{Q3: Executability with exact Cost}
+\[
+polish, polish ~\text{executable with exact cost}~ 4
+\]
+is true, because the repeated $polish$ re-asserts an already-true fluent and adds zero cost.
+\[
+polish, buff ~\text{executable with exact cost}~ 4
+\]
+is true, since $buff$ produces an empty effect after the piece is polished.
+\[
+buff, buff ~\text{executable with exact cost}~ 2
+\]
+is true, for the same reason.
 \end{document}
