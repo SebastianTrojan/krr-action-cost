@@ -17,6 +17,6 @@ wait costs 9
 
 plantAlive after waterPlant, wait, waterPlant, wait
 !plantAlive after waterPlant, wait, waterPlant, wait
-waterPlant, wait, waterPlant, wait executable with cost 20
+waterPlant, wait, waterPlant, wait executable with exact cost 20
 wait, wait, wait, wait executable with cost 18
 waterPlant, waterPlant, waterPlant, waterPlant executable with exact cost 2

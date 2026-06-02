@@ -602,7 +602,7 @@ educational examples. The advantage of this exhaustive method is that it stays
 very close to the formal semantics and is easy to verify.
 
 \section{Testing}
-\subsection*{Michł Szewczak}
+\subsection*{Michał Szewczak}
 \subsection*{Example 1: The Vault Room}
 Let's consider a scenario involving a vault room protected by wards and physical security layers and a thief that wants to access the vault illegally. He was given a key, but is not sure whether it is the key to the vault he plans to rob, and has no way to check it. Smashing the door is loud and it triggers the alarm and costs physical effort, but it always opens the door. Picking the lock is elegant and quiet, but it requires the key the thief has to be the right one for the lock to work and bypass the vault's wards, otherwise it completely fails.
 
@@ -1251,6 +1251,7 @@ But the value statement requires:
 \Psi(polish, \sigma_0^2) \models polished
 \]
 This is a contradiction. Therefore, $\sigma_0^2$ is not allowed.
+
 \subsubsection*{Execution}
 Thus, the only possible initial state is:
 \[
@@ -1428,6 +1429,138 @@ is false since there exists an execution with cost $7 > 6$.
     \includegraphics[width=0.8\textwidth]{testing/Kuba/example4.png}
     \caption{Jakub Seliga - example 4}
     \label{fig:JS4}
+\end{figure}
+
+
+\subsection*{Wiktoria Koniecko}
+\subsection*{Example 1: YSP modification}
+Let's consider a modification of the Yale Shooting Problem in which we don't care whether the gun is
+loaded or not and two shots are necessary to kill the turkey.
+
+\subsubsection*{Action Domain Statements}
+\[\text{initially}~ alive\]
+\[wounded ~\text{after}~ shoot\]
+\[shoot ~\text{causes}~ \neg alive ~\text{if}~ wounded\]
+\[shoot ~\text{causes}~ wounded ~\text{if}~ \neg wounded\]
+\[shoot ~\text{costs}~ 5\]
+
+\subsubsection*{Completions of $\sigma_0$}
+The fluent $wounded$ is unspecified, giving two candidate completions:
+\[\sigma_0^1 = \{alive, wounded\}\]
+\[\sigma_0^2 = \{alive, \neg wounded\}\]
+
+\subsubsection*{Execution}
+The only available action is \(shoot\). If \(wounded\), performing \(shoot\) only once is sufficient
+to kill the turkey and shooting will no longer have any effect, so any non-empty program will have
+exact cost 5. If not \(wounded\), shooting two times is necessary, and the program will have cost
+at most 10.
+
+\subsubsection*{Print screen}
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.8\textwidth]{testing/Wiktoria/example1.png}
+    \caption{Wiktoria Koniecko - example 1}
+    \label{fig:WK1}
+\end{figure}
+
+\subsubsection*{Query Results}
+\paragraph{Q1: Goal Satisfaction}
+\[\neg alive ~\text{after}~ shoot, shoot\]
+is true. If the turkey was wounded, it dies with the first shot. If it wasn't, it dies with the second.
+
+\[alive ~\text{after}~ shoot\]
+\[\neg alive ~\text{after}~ shoot\]
+are both false. We cannot tell whether the turkey is dead or alive after only being shot once.
+
+\paragraph{Q2: Executability with cost}
+\[shoot, shoot ~\text{executable with cost}~ 10\]
+is true because the cost of \(shoot\) is 5.
+
+\[shoot, shoot, shoot, shoot ~\text{executable with cost}~ 10\]
+is true because after shooting twice the turkey is guaranteed to be dead, so the \(shoot\) action
+has no effect and is performed with cost 0.
+
+\paragraph{Q3: Executability with exact cost}
+\[shoot, shoot ~\text{executable with exact cost}~ 10\]
+is false. If the turkey is wounded it will die after the first shot. The second action would have
+no effect, so the program would execute with cost 5.
+
+\subsection*{Example 2: YSP modification 2: inconsistent domain}
+This is an example of the Yale Shooting Problem modified to have an inconsistent domain.
+
+\subsubsection*{Action Domain Statements}
+\[\text{initially}~ alive, loaded\]
+\[loaded ~\text{after}~ shoot\]
+\[shoot ~\text{causes}~ \neg loaded, \neg alive ~\text{if}~ loaded\]
+\[load ~\text{causes}~ loaded\]
+\[shoot ~\text{costs}~ 5\]
+\[load ~\text{costs}~ 2\]
+
+\(loaded\) is undefined, because it has to be simultaneously true and false after performing shoot
+in the initial state.
+
+\subsubsection*{Print screen}
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.8\textwidth]{testing/Wiktoria/example2.png}
+    \caption{Wiktoria Koniecko - example 2}
+    \label{fig:WK2}
+\end{figure}
+
+\subsection*{Example 3: Watering a plant}
+This example models watering a plant. The plant dies if it doesn't receive water or is watered too much.
+
+\subsubsection*{Action Domain Statements}
+\[\text{initially}~ plantAlive\]
+\[waterPlant ~\text{causes} plantWatered\]
+\[waterPlant ~\text{causes} !plantAlive ~\text{if} plantWatered\]
+\[wait ~\text{causes} !plantWatered\]
+\[wait ~\text{causes} !plantAlive ~\text{if} !plantWatered\]
+\[waterPlant ~\text{costs}~ 1\]
+\[wait ~\text{costs} 9\]
+
+\subsubsection*{Completions of $\sigma_0$}
+\(plantWatered\) is unspecified. This gives us two completions:
+\[\sigma_0^1 = \{plantAlive, plantWatered\}\]
+\[\sigma_0^2 = \{plantAlive, \neg plantWatered\}\]
+
+\subsubsection*{Execution}
+The plant will surely not be alive if the program contains the same action twice in a row regardless of its
+initial state. However, the death of the plant doesn't necessarily reduce the cost of all future actions to 0. Both actions
+can still impact the fluent \(plantWatered\). Let's consider the following program:
+\[waterPlant, wait, waterPlant, wait.\]
+Regardless of whether the plant is alive or not, all the statements except the first change
+\(plantWatered\), so they're executed with non-zero cost. The first statement changes \(plantWatered\)
+if the plant was not initially watered. If it was, the plant becomes no longer alive, changing \(plantAlive\).
+Thus the first statement is also executed with non-zero cost regardless of the initial state.
+
+\subsubsection*{Query Results}
+\paragraph{Q1: Goal Satisfaction}
+\[\neg plantAlive ~\text{after}~ wait, wait\]
+\[\neg plantAlive ~\text{after}~ waterPlant, waterPlant\]
+are both true.
+
+\[alive ~\text{after}~ waterPlant, wait, waterPlant, wait\]
+\[\neg alive ~\text{after}~ waterPlant, wait, waterPlant, wait\]
+are both false. We cannot tell whether the plant is dead or alive.
+
+\paragraph{Q2: Executability with cost}
+\[wait, wait ~\text{executable with cost}~ 18\]
+is true because the \(wait\) action will have an effect at most twice and its cost is 9.
+
+\paragraph{Q3: Executability with exact cost}
+\[waterPlant, wait, waterPlant, wait ~\text{executable with exact cost}~ 20\]
+is true.
+
+\[waterPlant, waterPlant, waterPlant, waterPlant ~\text{executable with exact cost}~ 2\]
+is false. If the plant was initially watered, the program would execute with cost 1.
+
+\subsubsection*{Print screen}
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.8\textwidth]{testing/Wiktoria/example3.png}
+    \caption{Wiktoria Koniecko - example 3}
+    \label{fig:WK3}
 \end{figure}
 
 \section{User guide}
