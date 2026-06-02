@@ -5,7 +5,7 @@
 \usepackage{graphicx}
 \usepackage{float}
 
-\title{Knowledge Representation and Reasoning \\ Project 4: Actions with Cost \\ Checkpoint 2}
+\title{Knowledge Representation and Reasoning \\ Project 4: Actions with Cost}
 \author{Jakub Seliga, Michał Szewczak, Sebastian Trojan, Wiktoria Koniecko}
 \date{}
 
@@ -466,6 +466,125 @@ These constraints are inconsistent.
 \subsubsection*{Query Results}
 
 All queries are undefined since no model exists.
+
+\section{Technical description}
+The compiler was implemented in Python as a pipeline with five main stages:
+input normalization, parsing, model construction, query evaluation, and result
+presentation. The implementation follows the formal semantics of the
+\(\mathbb{DS}_{4}\) action language used in this project.
+
+\subsection{Data structures}
+The source specification is first normalized by removing comments and optional
+trailing dots. Every non-empty line is stored together with its original line
+number, which allows the compiler to report precise parsing errors.
+
+The internal representation is built from several small logical structures:
+\begin{itemize}
+    \item \textbf{Literal} stores a fluent and its polarity, for example
+    \(doorOpen\) or \(!doorOpen\).
+    \item \textbf{Value statement} stores a literal and a program, representing
+    either an initial fact or a statement of the form
+    \(f ~\text{after}~ A_1,\ldots,A_n\).
+    \item \textbf{Effect statement} stores an action, a resulting literal,
+    and a tuple of preconditions.
+    \item \textbf{Cost statement} stores an action and its declared cost.
+    \item \textbf{Query structures} represent the three supported query types:
+    goal queries, bounded-cost queries, and exact-cost queries.
+\end{itemize}
+
+At the domain level, statements are grouped into three tuples:
+value statements, effect statements, and cost statements.
+This makes later validation and evaluation simpler.
+
+\subsection{Representation of states and programs}
+The set of fluents and actions is inferred automatically from the domain.
+After that, each fluent is assigned an index. A complete state is represented
+as a tuple of Boolean values. If the fluent order is
+\((doorOpen, hasKey, alarmActive)\), then the state
+\((False, True, False)\) corresponds to
+\(\{\neg doorOpen, hasKey, \neg alarmActive\}\).
+
+To access values efficiently, the compiler stores a dictionary mapping each
+fluent name to its position in the state tuple. Programs are represented as
+tuples of action names.
+
+\subsection{Transition and cost tables}
+The core semantic structures are:
+\begin{itemize}
+    \item a \textbf{transition table} indexed by \((action, state)\), returning
+    the next state,
+    \item a \textbf{cost table} indexed by \((action, state)\), returning the
+    cost of the action in that state,
+    \item a tuple of valid initial states, interpreted as the set of models of
+    the action domain.
+\end{itemize}
+
+This representation is efficient because tuples are immutable and can be used
+as dictionary keys. As a consequence, program execution becomes a sequence of
+dictionary lookups.
+
+\subsection{Parsing algorithm}
+The parser works in the following order:
+\begin{enumerate}
+    \item normalize the text and split it into the \texttt{[domain]} and
+    \texttt{[queries]} sections,
+    \item parse every domain line as one of the supported statement forms:
+    \texttt{initially ...}, \texttt{... causes ... if ...},
+    \texttt{... costs ...}, or \texttt{... after ...},
+    \item parse every query line as a goal query, a bounded-cost query,
+    or an exact-cost query,
+    \item infer the complete signature of fluents and actions from the parsed domain.
+\end{enumerate}
+
+The language is small and regular, so direct pattern-based parsing is simpler
+and more transparent than using a general parser generator.
+
+\subsection{Model construction algorithm}
+Let \(n\) be the number of fluents. The compiler first generates all \(2^n\)
+possible complete Boolean assignments. Each assignment is treated as a candidate
+initial state.
+
+For every action and every state, the next state is computed as follows:
+\begin{enumerate}
+    \item start from the current state and apply the inertia law,
+    \item collect all effect statements relevant to the given action and fluent,
+    \item keep only effects whose preconditions are satisfied,
+    \item if no effect is applicable, preserve the old value,
+    \item if exactly one truth value is enforced, update the fluent,
+    \item if both positive and negative effects apply to the same fluent,
+    report a contradiction.
+\end{enumerate}
+
+After the transition table is built, the cost table is constructed.
+If an action has a declared cost and its execution changes the state, that
+cost is used; otherwise the cost is \(0\). This directly implements the
+empty-effect rule from the formal semantics.
+
+\subsection{Model filtering and query evaluation}
+Not every candidate initial state is a valid model. The compiler removes a state if:
+\begin{itemize}
+    \item it violates an \texttt{initially} statement, or
+    \item after executing a program required by a value statement, the resulting
+    state does not satisfy the required literal.
+\end{itemize}
+
+The remaining states form the model set of the domain.
+Queries are then evaluated universally over this set:
+\begin{itemize}
+    \item a goal query is true only if the goal holds in the final state of every model,
+    \item a bounded-cost query is true only if the total cost never exceeds the bound,
+    \item an exact-cost query is true only if every model produces exactly the required cost.
+\end{itemize}
+
+If no model remains after filtering, the compiler reports an inconsistent domain
+and does not print query results.
+
+\subsection{Complexity}
+The dominant cost of the algorithm is state-space generation. Since the number of
+candidate states is \(2^n\), the implementation is exponential in the number of
+fluents. For this reason it is intended mainly for small and medium-sized
+educational examples. The advantage of this exhaustive method is that it stays
+very close to the formal semantics and is easy to verify.
 
 \section{Testing}
 \subsection*{Michł Szewczak}
@@ -1054,6 +1173,95 @@ is true, for the same reason.
     \caption{Jakub Seliga - example 3}
     \label{fig:JS3}
 \end{figure}
-\subsection{Wiktoria Koniecko}
-\subsection{Sebastian Trojan}
+\section{User guide}
+The compiler is intended to be used through the prepared Windows executable.
+After launching the application, the user may either enter a specification
+directly in the editor or open an existing \texttt{.krr} or \texttt{.txt} file.
+The left pane is used for domain statements, the right pane for queries, and the
+output pane displays the compilation result.
+
+\subsection{Specification format}
+A stored specification should contain two sections:
+\begin{verbatim}
+[domain]
+... domain statements ...
+
+[queries]
+... query statements ...
+\end{verbatim}
+
+The domain section may contain:
+\begin{itemize}
+    \item \texttt{initially fluent} or \texttt{initially !fluent}
+    \item \texttt{fluent after action\_1, action\_2, ...}
+    \item \texttt{action causes fluent if fluent, !fluent, ...}
+    \item \texttt{action causes fluent}
+    \item \texttt{action costs n}
+\end{itemize}
+
+The queries section may contain:
+\begin{itemize}
+    \item goal queries of the form
+    \texttt{fluent, !fluent after action\_1, action\_2, ...}
+    \item bounded-cost queries of the form
+    \texttt{action\_1, action\_2 executable with cost n}
+    \item exact-cost queries of the form
+    \texttt{action\_1, action\_2 executable with exact cost n}
+\end{itemize}
+
+Negation is written only with the symbol \texttt{!}. Comments begin with
+\texttt{\#}. Files may use either the \texttt{.krr} or \texttt{.txt} extension.
+
+\subsection{Using the application}
+The normal workflow is:
+\begin{itemize}
+    \item launch the executable,
+    \item type the domain in the left pane and the queries in the right pane,
+    or open an existing specification file with \texttt{Ctrl+O},
+    \item press \texttt{F5} or \texttt{Ctrl+R} to run the compiler,
+    \item read the result in the output pane.
+\end{itemize}
+
+The most important shortcuts are:
+\begin{itemize}
+    \item \texttt{F5} or \texttt{Ctrl+R} -- run the compiler,
+    \item \texttt{Esc} or \texttt{Ctrl+Q} -- close the editor,
+    \item \texttt{F1} -- show or hide help,
+    \item \texttt{Ctrl+O} -- open an existing \texttt{.krr} or \texttt{.txt} file,
+    \item \texttt{Tab} and \texttt{Shift+Tab} -- switch between panes.
+\end{itemize}
+
+The domain may remain unchanged while the user edits the query pane and reruns
+the compiler multiple times. This makes the application convenient for testing
+many queries against the same action domain.
+
+\subsection{Output interpretation}
+For a consistent domain, the compiler prints every query together with the
+corresponding result \texttt{TRUE} or \texttt{FALSE}. If the domain is
+inconsistent, the compiler prints only:
+\begin{verbatim}
+DOMAIN STATUS: inconsistent
+\end{verbatim}
+and query evaluation is skipped.
+
+\section{Contribution}
+For the parts evaluated in this report, the work was divided equally among all
+team members. The testing part was graded separately and is therefore not included
+in the division below. The following list presents the primary responsibility
+assigned to each person in the project.
+
+\begin{itemize}
+    \item \textbf{Jakub Seliga -- 25\%}: preparation of the example part of the
+    report, including the construction and description of example domains and
+    illustrative scenarios.
+    \item \textbf{Michal Szewczak -- 25\%}: preparation of the introduction and
+    user-oriented descriptive parts of the report, in particular the user guide
+    and the presentation of how the application is used.
+    \item \textbf{Sebastian Trojan -- 25\%}: implementation of the compiler and
+    executable application, together with the technical description of the adopted
+    data structures and algorithms.
+    \item \textbf{Wiktoria Koniecko -- 25\%}: preparation and refinement of the
+    formal theoretical part of the report, especially the syntax and semantics of
+    the action language and query language, as well as notation consistency.
+\end{itemize}
 \end{document}
