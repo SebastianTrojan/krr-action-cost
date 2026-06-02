@@ -1,18 +1,15 @@
 [domain]
-initially !polished
-polished after polish
-polish causes polished if clean
-clean after polish
-polish costs 4
-buff causes polished
-buff costs 2
+initially !doorUnlocked
+initially !alarmActive
+doorUnlocked after smashDoor
+doorUnlocked after pickLock
+pickLock causes doorUnlocked if hasTrueKey
+smashDoor causes doorUnlocked
+smashDoor causes alarmActive
+pickLock costs 2
+smashDoor costs 8
 
 [queries]
-polished after polish
-clean after polish
-polished after buff
-polish executable with exact cost 4
-polish, polish executable with exact cost 4
-polish, buff executable with exact cost 4
-buff executable with exact cost 2
-buff, buff executable with exact cost 2
+doorUnlocked, alarmActive after pickLock, smashDoor
+pickLock, smashDoor executable with cost 10
+pickLock, smashDoor executable with exact cost 10

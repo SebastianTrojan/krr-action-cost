@@ -1,17 +1,12 @@
 [domain]
-initially lightOn
-initially !switchLocked
-flipOff causes !lightOn if !switchLocked
-flipOn causes lightOn if !switchLocked
-lockSwitch causes switchLocked
-flipOff costs 3
-flipOn costs 4
-lockSwitch costs 1
+initially !heated
+warmUp causes heated if powered
+warmUp costs 6
 
 [queries]
-!lightOn after flipOff
-lightOn after flipOff, flipOn
-flipOff, flipOn executable with exact cost 7
-flipOff, flipOff executable with exact cost 3
-lockSwitch, flipOff executable with exact cost 1
-!lightOn after lockSwitch, flipOff
+heated after warmUp
+heated after warmUp, warmUp
+warmUp executable with cost 6
+warmUp executable with exact cost 6
+warmUp, warmUp executable with cost 6
+
