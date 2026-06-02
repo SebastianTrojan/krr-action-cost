@@ -1,0 +1,21 @@
+[domain]
+initially !doorOpen
+initially chamberPressurized
+initially !sealUnlocked
+
+!chamberPressurized after depressurize
+sealUnlocked after depressurize, unlatchSeal
+
+depressurize causes !chamberPressurized
+unlatchSeal causes sealUnlocked if !chamberPressurized
+openAirlock causes doorOpen if sealUnlocked
+
+depressurize costs 6
+unlatchSeal costs 2
+openAirlock costs 5
+
+
+[queries]
+{doorOpen, !chamberPressurized, sealUnlocked} after depressurize, unlatchSeal, openAirlock
+depressurize, unlatchSeal, openAirlock executable with cost 13
+depressurize, unlatchSeal, openAirlock executable with exact cost 13

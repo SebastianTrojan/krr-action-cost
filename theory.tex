@@ -876,6 +876,124 @@ Because no model can be constructed to satisfy the underlying constraints of the
     \caption{Michał Szewczak - example 3}
     \label{fig:MS3}
 \end{figure}
+\subsection{Example 4: The Space Station Airlock (Timeline Convergence)}
+An auxiliary airlock chamber is prepared for an emergency spacewalk while flickering hull sensors leave the active status of an external solar storm completely unknown. A manual three-step safety protocol—consisting of chamber depressurization, manual seal unlatching, and hydraulic door release—is executed by an astronaut. Potential variations in external electromagnetic resistance are entirely masked by a heavy hydraulic override system, allowing a completely predictable suit battery drain to be maintained across both possible environmental conditions. This scenario demonstrates a system operating across 4 fluents, 3 actions, and a 3-step execution program. It highlights how an unstated environmental hazard splits the history of the system into branching paths of varying operational costs, which subsequently converge back into a singular, unified final state.
+
+\subsubsection{Action Domain Statements}
+\[
+\text{initially}~ \neg doorOpen
+\]
+\[
+\text{initially}~ chamberPressurized
+\]
+\[
+\text{initially}~ \neg sealUnlocked
+\]
+\[
+\neg chamberPressurized ~\text{after}~ depressurize
+\]
+\[
+sealUnlocked ~\text{after}~ depressurize, unlatchSeal
+\]
+\[
+depressurize ~\text{causes}~ \neg chamberPressurized
+\]
+\[
+unlatchSeal ~\text{causes}~ sealUnlocked ~\text{if}~ \neg chamberPressurized
+\]
+\[
+openAirlock ~\text{causes}~ doorOpen ~\text{if}~ sealUnlocked
+\]
+\[
+depressurize ~\text{costs}~ 6
+\]
+\[
+unlatchSeal ~\text{costs}~ 2
+\]
+\[
+openAirlock ~\text{costs}~ 5
+\]
+
+\subsubsection{Program}
+\[
+P = (depressurize, unlatchSeal, openAirlock)
+\]
+
+\subsubsection{Completions of $\sigma_0$}
+The fluent $stormActive$ is omitted from our initial state parameters, branching our framework into two valid, complete initial states:
+\[
+\sigma_0^1 = \{\neg doorOpen, chamberPressurized, \neg sealUnlocked, \neg stormActive\}
+\]
+\[
+\sigma_0^2 = \{\neg doorOpen, chamberPressurized, \neg sealUnlocked, stormActive\}
+\]
+
+\parr
+We validate these completions against our single-action historical checkpoints:
+\begin{enumerate}
+    \item $s_1 = \neg chamberPressurized ~\text{after}~ depressurize$: For both states, running $depressurize$ successfully flips $chamberPressurized \rightarrow \neg chamberPressurized$, satisfying the literal.
+    \item $s_2 = sealUnlocked ~\text{after}~ depressurize, unlatchSeal$: Because the first step successfully vented the chamber, the subsequent step $unlatchSeal$ finds its precondition ($\neg chamberPressurized$) satisfied. It flips $\neg sealUnlocked \rightarrow sealUnlocked$ in both timelines.
+\end{enumerate}
+Both initial state completions are entirely consistent with the tracking observations, meaning both branches survive.
+
+\subsubsection{Execution Paths and Convergence}
+
+
+
+\paragraph{Path 1 (No Storm Hazard: $\sigma_0^1$)}
+\begin{enumerate}
+    \item \textbf{Action 1 ($depressurize$):} The chamber vents. The state changes ($\sigma_1^1 \neq \sigma_0^1$), applying the full power usage:
+    \[ \sigma_1^1 = \{\neg doorOpen, \neg chamberPressurized, \neg sealUnlocked, \neg stormActive\} \quad \rightarrow \quad Cost = 6 \]
+
+    \item \textbf{Action 2 ($unlatchSeal$):} Precondition $\neg chamberPressurized$ is true. The seal releases ($\sigma_2^1 \neq \sigma_1^1$):
+    \[ \sigma_2^1 = \{\neg doorOpen, \neg chamberPressurized, sealUnlocked, \neg stormActive\} \quad \rightarrow \quad Cost = 2 \]
+
+    \item \textbf{Action 3 ($openAirlock$):} Precondition $sealUnlocked$ is true. The heavy door swings open ($\sigma_3^1 \neq \sigma_2^1$). Since no storm resistance is active, it incurs baseline cost:
+    \[ \sigma_3^1 = \{doorOpen, \neg chamberPressurized, sealUnlocked, \neg stormActive\} \quad \rightarrow \quad Cost = 5 \]
+\end{enumerate}
+\[ \text{Total Path 1 Cost: } Cost^\star(P) = 6 + 2 + 5 = 13 \]
+
+\paragraph{Path 2 (Active Storm Hazard: $\sigma_0^2$)}
+\begin{enumerate}
+    \item \textbf{Action 1 ($depressurize$):} The chamber vents successfully ($\sigma_1^2 \neq \sigma_0^2$):
+    \[ \sigma_1^2 = \{\neg doorOpen, \neg chamberPressurized, \neg sealUnlocked, stormActive\} \quad \rightarrow \quad Cost = 6 \]
+
+    \item \textbf{Action 2 ($unlatchSeal$):} Precondition is true. The seal releases ($\sigma_2^2 \neq \sigma_1^2$):
+    \[ \sigma_2^2 = \{\neg doorOpen, \neg chamberPressurized, sealUnlocked, stormActive\} \quad \rightarrow \quad Cost = 2 \]
+
+    \item \textbf{Action 3 ($openAirlock$):} Precondition is true. The outer door opens ($\sigma_3^2 \neq \sigma_2^2$). However, because $stormActive$ is true, the door motor experiences physical counter-force resistance, boosting the execution cost:
+    \[ \sigma_3^2 = \{doorOpen, \neg chamberPressurized, sealUnlocked, stormActive\} \quad \rightarrow \quad Cost = 5 \]
+\end{enumerate}
+\[ \text{Total Path 2 Cost: } Cost^\star(P) = 6 + 2 + 5 = 13 \]
+
+\subsubsection{Final States}
+Because the program actions only manipulated mechanical door elements and never interacted with or altered the outer space environment, the fluent $stormActive$ uniquely retains its original divergent values via inertia:
+\[
+\sigma_3^1 = \{doorOpen, \neg chamberPressurized, sealUnlocked, \neg stormActive\}
+\]
+\[
+\sigma_3^2 = \{doorOpen, \neg chamberPressurized, sealUnlocked, stormActive\}
+\]
+
+\subsubsection{Query Results}
+
+\paragraph{Q1: Goal Satisfaction}
+\[
+\{doorOpen, \neg chamberPressurized, sealUnlocked\} ~\text{after}~ depressurize, unlatchSeal, openAirlock
+\]
+is \textbf{true} because all three specified goal literals are perfectly satisfied across both final states ($\sigma_3^1$ and $\sigma_3^2$), making the unstated status of the storm irrelevant to final task success.
+
+\paragraph{Q2: Executability with Cost}
+\[
+depressurize, unlatchSeal, openAirlock ~\text{executable with cost}~ 13
+\]
+is \textbf{true} since the total cumulative cost across both independent timelines satisfies $13 \le 13$.
+
+\paragraph{Q3: Executability with exact Cost}
+\[
+depressurize, unlatchSeal, openAirlock ~\text{executable with exact cost}~ 13
+\]
+is \textbf{true}. Even though the environmental context differed between the branches, their resulting path costs calculated identically, establishing a guaranteed exact cost profile of 13 for the program.
 \subsection*{Jakub Seliga}
 \subsection*{Example 1: The Light Switch}
 Let's consider a scenario with a light controlled by a switch that can be flipped off and back on, and which can also be permanently locked. Flipping the switch only works while the switch is unlocked; once locked, any further flip has no effect at all.
