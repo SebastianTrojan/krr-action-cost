@@ -1,5 +1,6 @@
 [domain]
-initially plantAlive, !plantWatered
+# incomplete information
+initially plantAlive
 
 waterPlant causes plantWatered
 waterPlant causes !plantAlive if plantWatered
@@ -10,12 +11,12 @@ waterPlant costs 1
 wait costs 9
 
 [queries]
-!plantAlive after wait
+# we can tell the plant will die even though we have incomplete information
+!plantAlive after wait, wait
 !plantAlive after waterPlant, waterPlant
+
 plantAlive after waterPlant, wait, waterPlant, wait
-waterPlant, wait, waterPlant, wait executable with exact cost 20
-# first wait kills the plant, others have no effect
-wait, wait, wait, wait executable with cost 9
-# false because second watering kills the plant
-waterPlant, waterPlant, waterPlant, waterPlant executable with cost 1
+!plantAlive after waterPlant, wait, waterPlant, wait
+waterPlant, wait, waterPlant, wait executable with cost 20
+wait, wait, wait, wait executable with cost 18
 waterPlant, waterPlant, waterPlant, waterPlant executable with exact cost 2
