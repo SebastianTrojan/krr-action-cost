@@ -1,3 +1,14 @@
 [domain]
+# inconsistent domain
+
+initially alive, loaded
+loaded after shoot
+shoot causes !loaded, !alive if loaded
+load causes loaded
+
+shoot costs 5
+load costs 2
 
 [queries]
+# the program will not answer due to inconsistent domain error
+loaded after shoot

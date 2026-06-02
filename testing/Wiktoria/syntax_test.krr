@@ -1,0 +1,8 @@
+[domain]
+# line 5 should cause a syntax error (invalid cost)
+initially alive
+kill causes !alive
+kill costs snckjbd,eszfd
+
+[queries]
+whatever

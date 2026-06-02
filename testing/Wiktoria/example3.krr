@@ -1,3 +1,21 @@
 [domain]
+initially plantAlive, !plantWatered
+
+waterPlant causes plantWatered
+waterPlant causes !plantAlive if plantWatered
+wait causes !plantWatered
+wait causes !plantAlive if !plantWatered
+
+waterPlant costs 1
+wait costs 9
 
 [queries]
+!plantAlive after wait
+!plantAlive after waterPlant, waterPlant
+plantAlive after waterPlant, wait, waterPlant, wait
+waterPlant, wait, waterPlant, wait executable with exact cost 20
+# first wait kills the plant, others have no effect
+wait, wait, wait, wait executable with cost 9
+# false because second watering kills the plant
+waterPlant, waterPlant, waterPlant, waterPlant executable with cost 1
+waterPlant, waterPlant, waterPlant, waterPlant executable with exact cost 2

@@ -1,3 +1,23 @@
 [domain]
+# this example tests the 'after' statement
+
+initially alive
+wounded after shoot
+shoot causes !alive if wounded
+shoot causes wounded if !wounded
+shoot costs 5
 
 [queries]
+shoot, shoot executable with cost 10
+!alive after shoot, shoot
+
+# shows that further shooting does nothing when !alive
+shoot, shoot, shoot, shoot executable with cost 10
+
+# we may start wounded, then the cost is 5
+# if we start not wounded the cost is 10
+shoot, shoot executable with exact cost 10
+
+# a single shot is not enough to determine if it's dead of alive
+alive after shoot
+!alive after shoot
