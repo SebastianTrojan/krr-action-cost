@@ -1313,6 +1313,123 @@ is true, for the same reason.
     \caption{Jakub Seliga - example 3}
     \label{fig:JS3}
 \end{figure}
+
+\subsection*{Example 4: The Automated Bottling Line}
+Consider an automated bottling line with three stages. In the first stage, an empty bottle is positioned by a gravity-fed chute. Because this operation does not require any powered mechanism, no cost statement is assigned to it. In the next two stages, the bottle is filled by an electric pump and sealed by a hydraulic press, both of which consume resources and therefore have associated costs. This scenario demonstrates the two cases in which the cost of an action is zero under assumption A5: when no cost statement is defined for the action, and when the action is defined with a cost but results in no state change.
+\subsubsection*{Action Domain Statements}
+\[
+\text{initially}~ \neg bottleLoaded
+\]
+\[
+\text{initially}~ \neg bottleFilled
+\]
+\[
+\text{initially}~ \neg bottleCapped
+\]
+\[
+loadBottle ~\text{causes}~ bottleLoaded
+\]
+\[
+fillBottle ~\text{causes}~ bottleFilled ~\text{if}~ bottleLoaded
+\]
+\[
+capBottle ~\text{causes}~ bottleCapped ~\text{if}~ bottleFilled
+\]
+\[
+fillBottle ~\text{costs}~ 4
+\]
+\[
+capBottle ~\text{costs}~ 3
+\]
+\[
+bottleCapped ~\text{after}~ loadBottle, fillBottle, capBottle
+\]
+\subsubsection*{Program}
+\[
+P = (loadBottle, fillBottle, capBottle)
+\]
+\subsubsection*{Completions of $\sigma_0$}
+All three fluents are fixed by the initial statements, so the initial state is complete and there is a single candidate model:
+\[
+\sigma_0 = \{\neg bottleLoaded, \neg bottleFilled, \neg bottleCapped\}
+\]
+This candidate must still satisfy the value statement $bottleCapped ~\text{after}~ loadBottle, fillBottle, capBottle$. Running the full program from $\sigma_0$ (traced below) ends in a state where $bottleCapped$ holds, so the checkpoint is satisfied and the model survives.
+\subsubsection*{Execution}
+\paragraph{Action 1: $loadBottle$}
+The effect is unconditional, so $bottleLoaded$ turns true:
+\[
+\sigma_1 = \{bottleLoaded, \neg bottleFilled, \neg bottleCapped\}
+\]
+Cost calculation: although the state changed ($\Psi(loadBottle, \sigma_0) \neq \sigma_0$), the action $loadBottle$ has \emph{no} cost statement in the domain. By assumption A5 an action whose cost is unspecified contributes zero, so:
+\[
+Cost(loadBottle, \sigma_0) = 0
+\]
+\paragraph{Action 2: $fillBottle$}
+The precondition $bottleLoaded$ holds, so the pump fills the bottle:
+\[
+\sigma_2 = \{bottleLoaded, bottleFilled, \neg bottleCapped\}
+\]
+Cost calculation: the state changed and $fillBottle$ has a declared cost, so:
+\[
+Cost(fillBottle, \sigma_1) = 4
+\]
+\paragraph{Action 3: $capBottle$}
+The precondition $bottleFilled$ holds, so the press caps the bottle:
+\[
+\sigma_3 = \{bottleLoaded, bottleFilled, bottleCapped\}
+\]
+Cost calculation: the state changed and $capBottle$ has a declared cost, so:
+\[
+Cost(capBottle, \sigma_2) = 3
+\]
+\paragraph{Total Program Cost}
+\[
+Cost^\star(P) = 0 + 4 + 3 = 7
+\]
+\subsubsection*{Final States}
+\[
+\{\sigma_3\}
+\]
+\subsubsection*{Query Results}
+\paragraph{Q1: Goal Satisfaction}
+\[
+\{bottleLoaded, bottleFilled, bottleCapped\} ~\text{after}~ loadBottle, fillBottle, capBottle
+\]
+is true because all three literals hold in the single final state $\sigma_3$.
+\paragraph{Q2 and Q3: Executability with Cost}
+\[
+loadBottle ~\text{executable with exact cost}~ 0
+\]
+is true. The action changes the state, yet because no cost statement is declared for $loadBottle$ its cost is zero. This is the \emph{cost-unspecified} branch of the rule.
+\[
+fillBottle ~\text{executable with exact cost}~ 0
+\]
+is true, but for the opposite reason. Run alone from $\sigma_0$, the precondition $bottleLoaded$ of $fillBottle$ does not hold, so the action produces an empty effect; an empty effect costs zero even though $fillBottle$ has a declared cost of 4. This is the \emph{empty-effect} branch of the rule.
+\[
+loadBottle, fillBottle ~\text{executable with exact cost}~ 4
+\]
+is true, since the free $loadBottle$ first enables the precondition and contributes 0, after which $fillBottle$ changes the state and contributes 4.
+\[
+loadBottle, fillBottle, capBottle ~\text{executable with exact cost}~ 7
+\]
+is true since $Cost^\star(P) = 0 + 4 + 3 = 7$.
+\[
+loadBottle, fillBottle, capBottle ~\text{executable with cost}~ 7
+\]
+is true since for all executions $Cost^\star(P) \leq 7$.
+\[
+loadBottle, fillBottle, capBottle ~\text{executable with cost}~ 6
+\]
+is false since there exists an execution with cost $7 > 6$.
+
+\subsubsection*{Print screen}
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.8\textwidth]{testing/Kuba/example4.png}
+    \caption{Jakub Seliga - example 4}
+    \label{fig:JS4}
+\end{figure}
+
 \section{User guide}
 The compiler is intended to be used through the prepared Windows executable.
 After launching the application, the user may either enter a specification

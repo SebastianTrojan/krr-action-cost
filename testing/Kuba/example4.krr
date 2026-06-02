@@ -1,0 +1,19 @@
+[domain]
+initially !bottleLoaded
+initially !bottleFilled
+initially !bottleCapped
+loadBottle causes bottleLoaded
+fillBottle causes bottleFilled if bottleLoaded
+capBottle causes bottleCapped if bottleFilled
+fillBottle costs 4
+capBottle costs 3
+bottleCapped after loadBottle, fillBottle, capBottle
+
+[queries]
+bottleLoaded, bottleFilled, bottleCapped after loadBottle, fillBottle, capBottle
+loadBottle executable with exact cost 0
+fillBottle executable with exact cost 0
+loadBottle, fillBottle executable with exact cost 4
+loadBottle, fillBottle, capBottle executable with exact cost 7
+loadBottle, fillBottle, capBottle executable with cost 7
+loadBottle, fillBottle, capBottle executable with cost 6
