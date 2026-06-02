@@ -2,6 +2,8 @@
 
 \usepackage[margin=1in]{geometry}
 \usepackage{amsmath, amssymb}
+\usepackage{graphicx}
+\usepackage{float}
 
 \title{Knowledge Representation and Reasoning \\ Project 4: Actions with Cost \\ Checkpoint 2}
 \author{Jakub Seliga, Michał Szewczak, Sebastian Trojan, Wiktoria Koniecko}
@@ -582,6 +584,13 @@ pickLock, smashDoor ~\text{executable with exact cost}~ 10
 \]
 is true because the alternative inconsistent branch was eliminated, ensuring that $Cost^\star(P) = 10$ holds deterministically across all true models of the domain.
 
+\subsubsection*{Print screen}
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.8\textwidth]{testing/Michal/example1.png}
+    \caption{Michał Szewczak - example 1}
+    \label{fig:MS1}
+\end{figure}
 \subsection{Example 2: The Smart Greenhouse}
 Let us consider a scenario in an automated greenhouse where actions may yield empty effects depending on environmental resources.
 
@@ -673,6 +682,13 @@ P ~\text{executable with cost}~ 4 \quad \text{(False, because } 5 \le 4 \text{ a
 \[
 P ~\text{executable with exact cost}~ 4 \quad \text{(False, because program is not even executable with cost 4)}
 \]
+\subsubsection*{Print screen}
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.8\textwidth]{testing/Michal/example2.png}
+    \caption{Michał Szewczak - example 2}
+    \label{fig:MS2}
+\end{figure}
 \subsection{Example 3: The Jammed Door via Single-Action Constraints (Inconsistent Domain)}
 This example refines the jammed mechanism scenario by using strictly single-action value statements to enforce a historical observation midway through the plan execution timeline. This formulation exposes the physical impossibility of the system state trajectory, allowing the solver to correctly flag the domain as inconsistent.
 
@@ -734,6 +750,13 @@ Therefore, no valid structure exists for this setup, and the system correctly te
 
 \subsubsection{Query Results}
 Because no model can be constructed to satisfy the underlying constraints of the dynamic domain, all downstream query validations are structurally precluded from running. The query state evaluations are formally defined as \textbf{undefined}.
+\subsubsection*{Print screen}
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.8\textwidth]{testing/Michal/example3.png}
+    \caption{Michał Szewczak - example 3}
+    \label{fig:MS3}
+\end{figure}
 \subsection*{Jakub Seliga}
 \subsection*{Example 1: The Light Switch}
 Let's consider a scenario with a light controlled by a switch that can be flipped off and back on, and which can also be permanently locked. Flipping the switch only works while the switch is unlocked; once locked, any further flip has no effect at all.
@@ -839,6 +862,13 @@ is true, because the repeated $flipOff$ has an empty effect and adds zero cost.
 lockSwitch, flipOff ~\text{executable with exact cost}~ 1
 \]
 is true, because the blocked $flipOff$ contributes no cost.
+\subsubsection*{Print screen}
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.8\textwidth]{testing/Kuba/example1.png}
+    \caption{Jakub Seliga - example 1}
+    \label{fig:JS1}
+\end{figure}
 
 \subsection*{Example 2: The Heater}
 Let's consider a heater that warms a room, but only when the room is powered. The power status is unknown in the initial state, and there is no value statement to settle it, so both possibilities must be considered.
@@ -913,7 +943,13 @@ is false since $Cost^\star(P)$ is not always 6.
 warmUp, warmUp ~\text{executable with cost}~ 6
 \]
 is true, because the second $warmUp$ is idempotent in the powered branch, so the total cost remains 6.
-
+\subsubsection*{Print screen}
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.8\textwidth]{testing/Kuba/example2.png}
+    \caption{Jakub Seliga - example 2}
+    \label{fig:JS2}
+\end{figure}
 \subsection*{Example 3: The Polishing Bench}
 Let's consider a workpiece that can be polished or buffed. Polishing requires the piece to be clean, and a value statement enforces that polishing always yields a polished piece. The cleanliness of the piece is unspecified initially, but the value statements collapse this uncertainty to a single model.
 \subsubsection*{Action Domain Statements}
@@ -1011,7 +1047,13 @@ is true, since $buff$ produces an empty effect after the piece is polished.
 buff, buff ~\text{executable with exact cost}~ 2
 \]
 is true, for the same reason.
-
+\subsubsection*{Print screen}
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.8\textwidth]{testing/Kuba/example3.png}
+    \caption{Jakub Seliga - example 3}
+    \label{fig:JS3}
+\end{figure}
 \subsection{Wiktoria Koniecko}
 \subsection{Sebastian Trojan}
 \end{document}
