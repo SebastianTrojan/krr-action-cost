@@ -1,3 +1,9 @@
 [domain]
+initially !gateOpen
+scanBadge causes gateOpen if badgeValid
+scanBadge costs 3
 
 [queries]
+gateOpen after scanBadge
+scanBadge executable with cost 3
+scanBadge executable with exact cost 3

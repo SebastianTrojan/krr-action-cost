@@ -4,6 +4,8 @@
 \usepackage{amsmath, amssymb}
 \usepackage{graphicx}
 \usepackage{float}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta, calc, positioning}
 
 \title{Knowledge Representation and Reasoning \\ Project 4: Actions with Cost}
 \author{Jakub Seliga, Michał Szewczak, Sebastian Trojan, Wiktoria Koniecko}
@@ -13,6 +15,16 @@
 \newcommand{\actions}{\mathcal{A}c}
 \newcommand{\states}{\Sigma}
 \newcommand{\parr}{\par\vspace{5mm}\noindent}
+\newcommand{\scenarioheader}{\par\noindent\textbf{Consider the following scenario:}\par}
+\newcommand{\repheader}{\par\noindent\textbf{Representation in \(\mathbb{A}\):}\par}
+\newcommand{\exampleblocktitle}[1]{\par\medskip\noindent\textbf{#1}\par\smallskip}
+\newcommand{\byrule}[1]{\quad \text{\scriptsize by #1}}
+\newenvironment{centeredleftblock}[1][0.78\textwidth]
+{\begin{center}\begin{minipage}{#1}\raggedright}
+{\end{minipage}\end{center}}
+\newenvironment{statementblock}
+{\begin{flushleft}\renewcommand{\arraystretch}{1.1}\(\begin{array}{@{}l@{}}}
+{\end{array}\)\end{flushleft}}
 
 \begin{document}
 
@@ -60,7 +72,7 @@ assumptions:
 We will continue to use the symbols \(\actions\) and \(\fluents\) for the set of all actions and the set of all fluents respectively
 throughout this section.
 
-A non-empty set \(D\) of statements is called an \textbf{action domain}. The following kinds of statements exist in our action language:
+The following kinds of statements exist in our action language:
 \begin{itemize}
     \item value statement,
     \item effect statement,
@@ -84,6 +96,8 @@ Abbreviation when \(k=0\): \(A_1\) causes \(\bar{f}\)
 \[A ~\text{costs}~ \kappa\]
 Where \(A\in \actions\) is an action and \(\kappa>0\).
 
+A non-empty set \(D\) of value, effect, and cost statements is called an \textbf{action domain}.
+
 \section{Action language semantics}
 
 Let \(D_{trans} \subseteq D\) be the set of all value and effect statements in the action domain \(D\), and
@@ -94,6 +108,10 @@ Model construction is based solely on \(D_{trans}\).
 Cost statements \(D_{cost}\) play no role in determining whether a structure is a model;
 they are used only in a second phase, after the transition function \(\Psi\) has been
 fully determined, to label transitions with their costs.
+
+\parr
+A \textbf{state} is a mapping \(\sigma:\fluents\rightarrow\{0,1\}\).
+Let \(\states\) stand for the set of all states.
 
 \parr
 A \textbf{transition function} is a mapping \(\Psi: \actions\times\states\rightarrow\states\).
@@ -123,13 +141,13 @@ A statement \(s \in D_{trans}\) \textbf{is true in structure} \(S\) (in symbols 
 A structure \(S=(\Psi, \sigma_0)\) is a \textbf{model} of action domain \(D\) in a language over
 the signature \(\Upsilon=(\fluents,\actions)\) iff:
 \begin{itemize}
-    \item \((\forall s\in D_{trans})~ S\models s\)
-    \item for every effect statement \(s\) of the form
+    \item[(M1)] \((\forall s\in D_{trans})~ S\models s\)
+    \item[(M2)] for every effect statement \(s\) of the form
     \[A ~\text{causes}~ \bar{f} ~\text{if}~ g_1 ,\ldots, g_k\]
     and for every \(\sigma\in\states\), if one of the following holds:
     \begin{itemize}
-        \item \(s\in D_{trans}\) and \((\exists i\in\{1,\ldots,k\})~ \sigma\nvDash g_i\)
-        \item \(s\notin D_{trans}\)
+        \item[(a)] \(s\in D_{trans}\) and \((\exists i\in\{1,\ldots,k\})~ \sigma\nvDash g_i\)
+        \item[(b)] \(s\notin D_{trans}\)
     \end{itemize}
     then \(\sigma \models \bar{f}\) iff \(\Psi(A,\sigma)\models \bar{f}\)
 \end{itemize}
@@ -140,16 +158,15 @@ The \textbf{cost function}
 \(Cost: \actions\times\states\rightarrow\mathbb{N}\) is then uniquely determined by \(\Psi\)
 and \(D_{cost}\) as follows:
 \[Cost(A, \sigma) = \begin{cases}
-\kappa & \text{if } (A ~\text{costs}~ \kappa) \in D_{cost}
+\kappa & \text{(C1) if } (A ~\text{costs}~ \kappa) \in D_{cost}
         ~\text{and}~ \Psi(A, \sigma)\neq\sigma \\
-0      & \text{otherwise}
+0      & \text{(C2) otherwise}
 \end{cases}\]
-The \emph{otherwise} branch covers two cases mandated by assumption A5:
+The case \((C2)\) covers two possibilities:
 \begin{itemize}
-    \item no cost statement for \(A\) appears in \(D_{cost}\),
-    \item \(A\) has an empty effect in state \(\sigma\) (i.e.\ \(\Psi(A,\sigma)=\sigma\)).
+    \item[(a)] no cost statement for \(A\) appears in \(D_{cost}\),
+    \item[(b)] \(A\) has an empty effect in state \(\sigma\) (i.e.\ \(\Psi(A,\sigma)=\sigma\)).
 \end{itemize}
-In both cases \(Cost(A,\sigma)=0\).
 
 Since \(Cost\) is uniquely determined by \(\Psi\) and \(D_{cost}\), we write the full structure
 as a triple \(S=(\Psi, \sigma_0, Cost)\) as a notational convenience, understanding \(Cost\)
@@ -177,185 +194,362 @@ Where \(\kappa > 0\) and \(P\) is a program.
 
 \section{Semantics of the query language}
 
-\subsection{Partial Initial States}
+\subsection{Partial descriptions of initial state}
 
-A partial initial state represents a set of complete states (completions), each assigning a truth value to every fluent while remaining consistent with the given literals.
-\\Execution of a program $P$ from a partial state $\sigma_0$ induces a set of possible models:
+A \textbf{partial description of the initial state} specifies only the fluents whose truth values are
+known at the beginning. Therefore, each possible complete assignment of truth values to the
+unspecified fluents determines one complete initial state \(\sigma_0^i \in \states\), provided it is
+consistent with the partial description and the action domain \(D\).
+
+Each complete initial state \(\sigma_0^i\) determines a corresponding model
 \[
-S_i=(\Psi^i, \sigma_0^i, Cost)
+S_i=(\Psi, \sigma_0^i, Cost).
 \]
+Therefore, when the initial state is given only partially, a program \(P\) is executed separately in
+every model \(S_i\), always starting from the corresponding complete initial state \(\sigma_0^i\).
+For each \(i\), \(\Psi^\star(P, \sigma_0^i)\) denotes the final state reached by executing \(P\) in
+\(S_i\), and \(Cost^\star(P)\) denotes the total cost of that execution in \(S_i\).
 
 \subsection*{Q1: Goal satisfaction}
 A query of the form:
 \[\gamma ~\text{after}~ P\]
-is a consequence of action domain \(D\) iff for every model \(S_i=(\Psi^i, \sigma_0^i, Cost)\):
+is a consequence of action domain \(D\) iff for every model \(S_i=(\Psi, \sigma_0^i, Cost)\):
 \[
-(\forall \bar{f}\in\gamma)~~ \Psi^i(P, \sigma_0^i) \models \bar{f}
+(\forall \bar{f}\in\gamma)~~ \Psi^\star(P, \sigma_0^i) \models \bar{f}
 \]
 
 \subsection*{Q2: Executability with Cost}
 A query of the form:
 \[P ~\text{executable with cost}~ \kappa\]
-is a consequence of action domain \(D\) iff for every model \(S_i=(\Psi^i, \sigma_0^i, Cost)\):
+is a consequence of action domain \(D\) iff for every model \(S_i=(\Psi, \sigma_0^i, Cost)\):
 \[
-Cost(P, \sigma_0^i) \leq \kappa
+Cost^\star(P) \leq \kappa
 \]
 
 \subsection*{Q3: Executability with exact Cost}
 A query of the form:
 \[P ~\text{executable with exact cost}~ \kappa\]
-is a consequence of action domain \(D\) iff for every model \(S_i=(\Psi^i, \sigma_0^i, Cost)\):
+is a consequence of action domain \(D\) iff for every model \(S_i=(\Psi, \sigma_0^i, Cost)\):
 \[
-Cost(P, \sigma_0^i) = \kappa
+Cost^\star(P) = \kappa
 \]
 
 \section{Examples}
-Przykłady do rozszezrenia i obliczenia do dodania!
-\subsection*{Example 1}
-This is an example of an action domain with multiple models.
+The following examples illustrate the most important semantic behaviors of the
+language. We begin with a basic program in a fully specified initial state,
+then move to multiple models caused by a partial initial description, a case in
+which an empty effect changes the total cost, a case in which a value
+statement imposes the initial state, and finally an inconsistent domain.
 
-Let's consider the following statements:
-\[
-\text{initially}~ \neg doorOpen
-\]
-\[
-openDoor ~\text{causes}~ doorOpen ~\text{if}~ hasKey
-\]
-\[
+\subsection*{Example 1}
+This first example gives a basic illustration of program execution.
+
+\scenarioheader
+An agent stands in front of a closed door and has the key. Opening the door
+makes the door open if the agent has the key. Opening the door costs 5.
+
+\repheader
+\begin{centeredleftblock}[0.62\textwidth]
+\begin{statementblock}
+\text{initially}~ \neg doorOpen \\
+\text{initially}~ hasKey \\
+openDoor ~\text{causes}~ doorOpen ~\text{if}~ hasKey \\
 openDoor ~\text{costs}~ 5
+\end{statementblock}
+\end{centeredleftblock}
+
+
+\exampleblocktitle{Set of all states}
+\[
+\states = \{\sigma_0, \sigma_1, \sigma_2, \sigma_3\},\text{ where: }
 \]
+
+\noindent
+\begin{minipage}[t]{0.47\textwidth}
+\begin{statementblock}
+\sigma_0 = \{\neg doorOpen, hasKey\} - \text{initial state} \\
+\sigma_1 = \{doorOpen, hasKey\}
+\end{statementblock}
+\end{minipage}
+\hfill
+\begin{minipage}[t]{0.47\textwidth}
+\begin{statementblock}
+\sigma_2 = \{\neg doorOpen, \neg hasKey\} \\
+\sigma_3 = \{doorOpen, \neg hasKey\}
+\end{statementblock}
+\end{minipage}
+
+\exampleblocktitle{Transition function}
+\noindent
+\begin{minipage}[t]{0.47\textwidth}
+\begin{statementblock}
+\Psi(openDoor, \sigma_0) = \sigma_1 \byrule{(M1), (M2b)} \\
+\Psi(openDoor, \sigma_1) = \sigma_1 \byrule{(M1), (M2b)}
+\end{statementblock}
+\end{minipage}
+\hfill
+\begin{minipage}[t]{0.47\textwidth}
+\begin{statementblock}
+\Psi(openDoor, \sigma_2) = \sigma_2 \byrule{(M2a), (M2b)} \\
+\Psi(openDoor, \sigma_3) = \sigma_3 \byrule{(M2a), (M2b)}
+\end{statementblock}
+\end{minipage}
+
+\exampleblocktitle{Cost function}
+\noindent
+\begin{minipage}[t]{0.47\textwidth}
+\begin{statementblock}
+Cost(openDoor, \sigma_0) = 5 \byrule{(C1)} \\
+Cost(openDoor, \sigma_1) = 0 \byrule{(C2b)}
+\end{statementblock}
+\end{minipage}
+\hfill
+\begin{minipage}[t]{0.47\textwidth}
+\begin{statementblock}
+Cost(openDoor, \sigma_2) = 0 \byrule{(C2b)} \\
+Cost(openDoor, \sigma_3) = 0 \byrule{(C2b)}
+\end{statementblock}
+\end{minipage}
+
+\begin{figure}[H]
+\centering
+\setlength{\fboxsep}{8pt}
+\fbox{%
+\begin{tikzpicture}[
+    >=Latex,
+    node distance=2.7cm and 1.8cm,
+    state/.style={
+        draw,
+        rounded corners,
+        align=center,
+        text width=4.8cm,
+        inner sep=5pt,
+        font=\small
+    },
+    trans/.style={->, semithick}
+]
+\node[state, very thick, fill=gray!15] (s0) {$\{\neg doorOpen,\, hasKey\}$};
+\node[state, right=of s0] (s1) {$\{doorOpen,\, hasKey\}$};
+\node[state, below=of s0] (s2) {$\{\neg doorOpen,\, \neg hasKey\}$};
+\node[state, right=of s2] (s3) {$\{doorOpen,\, \neg hasKey\}$};
+
+\draw[trans] (s0) -- node[above] {$openDoor,\ 5$} (s1);
+\draw[trans] (s1) edge[loop above] node {$openDoor,\ 0$} ();
+\draw[trans] (s2) edge[loop below] node {$openDoor,\ 0$} ();
+\draw[trans] (s3) edge[loop below] node {$openDoor,\ 0$} ();
+\end{tikzpicture}
+}
+\caption{State-transition graph for Example 1. The initial state \(\sigma_0\) is highlighted.}
+\end{figure}
 
 \subsubsection*{Program}
-\[
+\begin{centeredleftblock}[0.45\textwidth]
+\(
 P = (openDoor)
-\]
-
-\subsubsection*{Completions of $\sigma_0$}
-This example presents a situation where there are two models because the value of fluent \(hasKey\) is unknown.
-\[
-\sigma_0^1 = \{\neg doorOpen, hasKey\}
-\]
-\[
-\sigma_0^2 = \{\neg doorOpen, \neg hasKey\}
-\]
+\)
+\end{centeredleftblock}
 
 \subsubsection*{Execution}
 
-\paragraph{Case 1: $\sigma_0^1$}
-
-Precondition holds, so:
-\[
-\sigma_1^1 = \{doorOpen, hasKey\}
-\]
-
-Cost:
-\[
+\begin{centeredleftblock}[0.9\textwidth]
+\noindent
+\begin{minipage}[t]{0.64\linewidth}
+\begin{statementblock}
+\text{initial state: } \sigma_0 = \{\neg doorOpen, hasKey\} \\
+\Psi(openDoor, \sigma_0) = \sigma_1 \\
+\Psi^\star((openDoor), \sigma_0) = \sigma_1 = \{doorOpen, hasKey\}
+\end{statementblock}
+\end{minipage}
+\hfill
+\begin{minipage}[t]{0.28\linewidth}
+\begin{statementblock}
+Cost(openDoor, \sigma_0) = 5 \\
 Cost^\star(P) = 5
-\]
+\end{statementblock}
+\end{minipage}
+\end{centeredleftblock}
 
-\paragraph{Case 2: $\sigma_0^2$}
 
-Precondition does not hold, so:
-\[
-\sigma_1^2 = \{\neg doorOpen, \neg hasKey\}
-\]
-
-Cost:
-\[
-Cost^\star(P) = 0
-\]
-
-\subsubsection*{Final States}
-\[
-\{\sigma_1^1, \sigma_1^2\}
-\]
-
-\subsubsection*{Query Results}
+\subsubsection{Query Results}
 
 \paragraph{Q1: Goal Satisfaction}
 \[
 \{doorOpen\} ~\text{after}~ P
 \]
-is false because $doorOpen$ does not hold in all final states.
+is true.
 
-\paragraph{Q2 and Q3: Executability with Cost}
-
-\[
-P ~\text{executable with exact cost}~ 5
-\]
-is false since $Cost^\star(P)$ is not always 5.
-
+\paragraph{Q2: Executability with Cost}
 \[
 P ~\text{executable with cost}~ 5
 \]
-is true since for all executions:
-\[
-Cost^\star(P) \leq 5
-\]
+is true.
 
+\paragraph{Q3: Executability with exact Cost}
 \[
-P ~\text{executable with cost}~ 0
+P ~\text{executable with exact cost}~ 5
 \]
-is false since there exists an execution with cost 5.
-
+is true.
 
 \subsection*{Example 2}
-Let's consider the following statements:
-\[
-\text{initially}~ \neg doorOpen
-\]
-\[
-\text{initially}~ hasKey
-\]
-\[
-openDoor ~\text{causes}~ doorOpen ~\text{if}~ hasKey
-\]
-\[
+This example shows three different reasons why the cost of an action may be
+\(0\): because no cost statement is given, because the action has an empty
+effect, and because both conditions hold at the same time.
+
+\scenarioheader
+An agent stands in front of a closed door and does not have the key. The key
+lies nearby. Taking the key makes the agent have the key. Opening the door
+makes the door open if the agent has the key. Opening the door costs 5.
+\repheader
+\begin{centeredleftblock}[0.62\textwidth]
+\begin{statementblock}
+\text{initially}~ \neg doorOpen \\
+\text{initially}~ \neg hasKey \\
+takeKey ~\text{causes}~ hasKey \\
+openDoor ~\text{causes}~ doorOpen ~\text{if}~ hasKey \\
 openDoor ~\text{costs}~ 5
+\end{statementblock}
+\end{centeredleftblock}
+
+
+\exampleblocktitle{Set of all states}
+\[
+\states = \{\sigma_0, \sigma_1, \sigma_2, \sigma_3\},\text{ where: }
 \]
+\noindent
+\begin{minipage}[t]{0.47\textwidth}
+\begin{statementblock}
+\sigma_0 = \{\neg doorOpen, \neg hasKey\} \\
+\sigma_1 = \{\neg doorOpen, hasKey\}
+\end{statementblock}
+\end{minipage}
+\hfill
+\begin{minipage}[t]{0.47\textwidth}
+\begin{statementblock}
+\sigma_2 = \{doorOpen, \neg hasKey\} \\
+\sigma_3 = \{doorOpen, hasKey\}
+\end{statementblock}
+\end{minipage}
+
+\exampleblocktitle{Transition function}
+\noindent
+\begin{minipage}[t]{0.47\textwidth}
+\begin{statementblock}
+\Psi(takeKey, \sigma_0) = \sigma_1 \byrule{(M1)} \\
+\Psi(takeKey, \sigma_1) = \sigma_1 \byrule{(M1)} \\
+\Psi(takeKey, \sigma_2) = \sigma_3 \byrule{(M1)} \\
+\Psi(takeKey, \sigma_3) = \sigma_3 \byrule{(M1)}
+\end{statementblock}
+\end{minipage}
+\hfill
+\begin{minipage}[t]{0.47\textwidth}
+\begin{statementblock}
+\Psi(openDoor, \sigma_0) = \sigma_0 \byrule{(M2a), (M2b)} \\
+\Psi(openDoor, \sigma_1) = \sigma_3 \byrule{(M1), (M2b)} \\
+\Psi(openDoor, \sigma_2) = \sigma_2 \byrule{(M2a), (M2b)} \\
+\Psi(openDoor, \sigma_3) = \sigma_3 \byrule{(M1), (M2b)}
+\end{statementblock}
+\end{minipage}
+
+\exampleblocktitle{Cost function}
+\noindent
+\begin{minipage}[t]{0.47\textwidth}
+\begin{statementblock}
+Cost(takeKey, \sigma_0) = 0 \byrule{(C2a)} \\
+Cost(takeKey, \sigma_1) = 0 \byrule{(C2a), (C2b)} \\
+Cost(takeKey, \sigma_2) = 0 \byrule{(C2a)} \\
+Cost(takeKey, \sigma_3) = 0 \byrule{(C2a), (C2b)}
+\end{statementblock}
+\end{minipage}
+\hfill
+\begin{minipage}[t]{0.47\textwidth}
+\begin{statementblock}
+Cost(openDoor, \sigma_0) = 0 \byrule{(C2b)} \\
+Cost(openDoor, \sigma_1) = 5 \byrule{(C1)} \\
+Cost(openDoor, \sigma_2) = 0 \byrule{(C2b)} \\
+Cost(openDoor, \sigma_3) = 0 \byrule{(C2b)}
+\end{statementblock}
+\end{minipage}
+
+\begin{figure}[H]
+\centering
+\setlength{\fboxsep}{8pt}
+\fbox{%
+\begin{tikzpicture}[
+    >=Latex,
+    node distance=2.2cm and 1.1cm,
+    state/.style={
+        draw,
+        rounded corners,
+        align=center,
+        text width=3.7cm,
+        inner sep=4pt,
+        font=\scriptsize
+    },
+    trans/.style={->, semithick}
+]
+\node[state, very thick, fill=gray!15] (s0) {$\{\neg doorOpen,\, \neg hasKey\}$};
+\node[state, right=of s0] (s1) {$\{\neg doorOpen,\, hasKey\}$};
+\node[state, below=of s0] (s2) {$\{doorOpen,\, \neg hasKey\}$};
+\node[state, right=of s2] (s3) {$\{doorOpen,\, hasKey\}$};
+
+\draw[trans] (s0) -- node[above] {$takeKey,\ 0$} (s1);
+\draw[trans] (s2) -- node[above] {$takeKey,\ 0$} (s3);
+\draw[trans] (s1) edge[loop above] node {$takeKey,\ 0$} ();
+\draw[trans] (s3) edge[loop below] node {$takeKey,\ 0$} ();
+\draw[trans] (s0) edge[loop left] node {$openDoor,\ 0$} ();
+\draw[trans] (s2) edge[loop left] node {$openDoor,\ 0$} ();
+\draw[trans] (s1) -- node[right] {$openDoor,\ 5$} (s3);
+\draw[trans] (s3) edge[loop right] node {$openDoor,\ 0$} ();
+\end{tikzpicture}
+}
+\caption{Whole state-transition graph for Example 2. The highlighted vertex marks the initial state, and the graph shows the three ways in which cost 0 can arise.}
+\end{figure}
 
 \subsubsection*{Program}
-\[
-P = (openDoor, openDoor)
-\]
+\begin{centeredleftblock}[0.5\textwidth]
+\(
+P = (takeKey, takeKey, openDoor, openDoor)
+\)
+\end{centeredleftblock}
 
 \subsubsection*{Execution}
-
-Initial state:
-\[
-\sigma_0 = \{\neg doorOpen, hasKey\}
-\]
-
-\paragraph{Action 1}
-
-Precondition holds, so:
-\[
-\sigma_1 = \{doorOpen, hasKey\}
-\]
-
-Cost:
-\[
-Cost(openDoor, \sigma_0) = 5
-\]
-
-\paragraph{Action 2}
-
-Precondition holds, but no change occurs:
-\[
-\sigma_2 = \{doorOpen, hasKey\}
-\]
-
-Cost:
-\[
-Cost(openDoor, \sigma_1) = 0
-\]
-
-\paragraph{Total Cost}
-\[
+\begin{centeredleftblock}[0.92\textwidth]
+\noindent
+\begin{minipage}[t]{0.64\linewidth}
+\begin{statementblock}
+\text{initial state: } \sigma_0 = \{\neg doorOpen, \neg hasKey\} \\
+\Psi(takeKey, \sigma_0) = \sigma_1 = \{\neg doorOpen, hasKey\} \\
+\Psi(takeKey, \sigma_1) = \sigma_1 = \{\neg doorOpen, hasKey\} \\
+\Psi(openDoor, \sigma_1) = \sigma_3 = \{doorOpen, hasKey\} \\
+\Psi(openDoor, \sigma_3) = \sigma_3 = \{doorOpen, hasKey\} \\
+\Psi^\star(P, \sigma_0) = \sigma_3 = \{doorOpen, hasKey\}
+\end{statementblock}
+\end{minipage}
+\hfill
+\begin{minipage}[t]{0.28\linewidth}
+\begin{statementblock}
+Cost(takeKey, \sigma_0) = 0 \\
+Cost(takeKey, \sigma_1) = 0 \\
+Cost(openDoor, \sigma_1) = 5 \\
+Cost(openDoor, \sigma_3) = 0 \\
 Cost^\star(P) = 5
+\end{statementblock}
+\end{minipage}
+\end{centeredleftblock}
+
+\subsubsection*{Final States}
+\[
+\{\sigma_3\}
 \]
+
 
 \subsubsection*{Query Results}
+
+\paragraph{Q1: Goal Satisfaction}
+\[
+\{doorOpen, hasKey\} ~\text{after}~ P
+\]
+is true.
 
 \paragraph{Q2: Executability with Cost}
 \[
@@ -365,76 +559,437 @@ is true.
 
 \paragraph{Q3: Executability with exact Cost}
 \[
-P ~\text{executable with exact cost}~ 10
+P ~\text{executable with exact cost}~ 5
 \]
-is false since:
+is true.
+
 \[
-Cost^\star(P) = 5 \neq 10.
+takeKey ~\text{executable with exact cost}~ 0
 \]
+is true because no cost statement is declared for \(takeKey\), so this is case
+\((C2a)\).
+
+\[
+takeKey, takeKey ~\text{executable with exact cost}~ 0
+\]
+is true because the second occurrence of \(takeKey\) has both no declared cost
+and an empty effect, so both \((C2a)\) and \((C2b)\) apply.
+
+\[
+openDoor, openDoor ~\text{executable with exact cost}~ 5
+\]
+is true because the first occurrence uses \((C1)\), while the second
+occurrence has an empty effect and therefore uses \((C2b)\).
 
 \subsection*{Example 3}
-Let's consider the following statements:
-\[
-\text{initially}~ \neg doorOpen
-\]
-\[
-doorOpen ~\text{after}~ openDoor
-\]
-\[
-openDoor ~\text{causes}~ doorOpen ~\text{if}~ hasKey
-\]
-\[
+This example shows how a partial description of the initial state leads to
+multiple models, different executions of the same program, and different total
+costs.
+
+\scenarioheader
+An agent stands in front of a closed storage room door. It is unknown whether
+the agent already has the key, but a spare key hangs nearby. Taking the key
+makes the agent have the key. Opening the door makes the door open if the
+agent has the key. Taking the key costs 1. Opening the door costs 5.
+
+\repheader
+\begin{centeredleftblock}[0.62\textwidth]
+\begin{statementblock}
+\text{initially}~ \neg doorOpen \\
+takeKey ~\text{causes}~ hasKey \\
+takeKey ~\text{costs}~ 1 \\
+openDoor ~\text{causes}~ doorOpen ~\text{if}~ hasKey \\
 openDoor ~\text{costs}~ 5
+\end{statementblock}
+\end{centeredleftblock}
+
+
+\exampleblocktitle{Set of all states}
+\[
+\states = \{\sigma_0, \sigma_1, \sigma_2, \sigma_3\},\text{ where: }
+\]
+\noindent
+\begin{minipage}[t]{0.47\textwidth}
+\begin{statementblock}
+\sigma_0 = \{\neg doorOpen, hasKey\} \\
+\sigma_1 = \{doorOpen, hasKey\}
+\end{statementblock}
+\end{minipage}
+\hfill
+\begin{minipage}[t]{0.47\textwidth}
+\begin{statementblock}
+\sigma_2 = \{\neg doorOpen, \neg hasKey\} \\
+\sigma_3 = \{doorOpen, \neg hasKey\}
+\end{statementblock}
+\end{minipage}
+
+\exampleblocktitle{Transition function}
+\noindent
+\begin{minipage}[t]{0.47\textwidth}
+\begin{statementblock}
+\Psi(takeKey, \sigma_0) = \sigma_0 \byrule{(M1)} \\
+\Psi(takeKey, \sigma_1) = \sigma_1 \byrule{(M1)} \\
+\Psi(takeKey, \sigma_2) = \sigma_0 \byrule{(M1)} \\
+\Psi(takeKey, \sigma_3) = \sigma_1 \byrule{(M1)}
+\end{statementblock}
+\end{minipage}
+\hfill
+\begin{minipage}[t]{0.47\textwidth}
+\begin{statementblock}
+\Psi(openDoor, \sigma_0) = \sigma_1 \byrule{(M1), (M2b)} \\
+\Psi(openDoor, \sigma_1) = \sigma_1 \byrule{(M1), (M2b)} \\
+\Psi(openDoor, \sigma_2) = \sigma_2 \byrule{(M2a), (M2b)} \\
+\Psi(openDoor, \sigma_3) = \sigma_3 \byrule{(M2a), (M2b)}
+\end{statementblock}
+\end{minipage}
+
+\exampleblocktitle{Cost function}
+\noindent
+\begin{minipage}[t]{0.47\textwidth}
+\begin{statementblock}
+Cost(takeKey, \sigma_0) = 0 \byrule{(C2b)} \\
+Cost(takeKey, \sigma_1) = 0 \byrule{(C2b)} \\
+Cost(takeKey, \sigma_2) = 1 \byrule{(C1)} \\
+Cost(takeKey, \sigma_3) = 1 \byrule{(C1)}
+\end{statementblock}
+\end{minipage}
+\hfill
+\begin{minipage}[t]{0.47\textwidth}
+\begin{statementblock}
+Cost(openDoor, \sigma_0) = 5 \byrule{(C1)} \\
+Cost(openDoor, \sigma_1) = 0 \byrule{(C2b)} \\
+Cost(openDoor, \sigma_2) = 0 \byrule{(C2b)} \\
+Cost(openDoor, \sigma_3) = 0 \byrule{(C2b)}
+\end{statementblock}
+\end{minipage}
+
+Due to the partial description of the initial state, we have two models:
+\[
+S_1 = (\Psi, \sigma_0, Cost), \qquad S_2 = (\Psi, \sigma_2, Cost).
 \]
 
 \subsubsection*{Program}
+\begin{centeredleftblock}[0.56\textwidth]
+\(
+P = (openDoor, takeKey, openDoor)
+\)
+\end{centeredleftblock}
+
+\subsubsection*{Model 1}
+For model \(S_1\), the initial state is \(\sigma_0 = \{\neg doorOpen, hasKey\}\).
+\begin{figure}[H]
+\centering
+\setlength{\fboxsep}{8pt}
+\fbox{%
+\begin{tikzpicture}[
+    >=Latex,
+    node distance=2.2cm and 1.1cm,
+    state/.style={
+        draw,
+        rounded corners,
+        align=center,
+        text width=3.7cm,
+        inner sep=4pt,
+        font=\scriptsize
+    },
+    trans/.style={->, semithick}
+]
+\node[state, very thick, fill=gray!15] (s0) {$\{\neg doorOpen,\, hasKey\}$};
+\node[state, right=of s0] (s1) {$\{doorOpen,\, hasKey\}$};
+\node[state, below=of s0] (s2) {$\{\neg doorOpen,\, \neg hasKey\}$};
+\node[state, right=of s2] (s3) {$\{doorOpen,\, \neg hasKey\}$};
+
+\draw[trans] (s0) -- node[above] {$openDoor,\ 5$} (s1);
+\draw[trans] (s1) edge[loop above] node {$openDoor,\ 0$} ();
+\draw[trans] (s2) edge[loop below] node {$openDoor,\ 0$} ();
+\draw[trans] (s3) edge[loop below] node {$openDoor,\ 0$} ();
+\draw[trans] (s0) edge[loop left] node {$takeKey,\ 0$} ();
+\draw[trans] (s1) edge[loop right] node {$takeKey,\ 0$} ();
+\draw[trans] (s2) -- node[left] {$takeKey,\ 1$} (s0);
+\draw[trans] (s3) -- node[right] {$takeKey,\ 1$} (s1);
+\end{tikzpicture}
+}
+\caption{Whole state-transition graph for Example 3 in Model 1.}
+\end{figure}
+
+\subsubsection*{Execution in Model 1}
+\begin{centeredleftblock}[0.9\textwidth]
+\noindent
+\begin{minipage}[t]{0.64\linewidth}
+\begin{statementblock}
+\text{initial state: } \sigma_0 = \{\neg doorOpen, hasKey\} \\
+\Psi(openDoor, \sigma_0) = \sigma_1 = \{doorOpen, hasKey\} \\
+\Psi(takeKey, \sigma_1) = \sigma_1 = \{doorOpen, hasKey\} \\
+\Psi(openDoor, \sigma_1) = \sigma_1 = \{doorOpen, hasKey\} \\
+\Psi^\star(P, \sigma_0) = \sigma_1 = \{doorOpen, hasKey\}
+\end{statementblock}
+\end{minipage}
+\hfill
+\begin{minipage}[t]{0.28\linewidth}
+\begin{statementblock}
+Cost(openDoor, \sigma_0) = 5 \\
+Cost(takeKey, \sigma_1) = 0 \\
+Cost(openDoor, \sigma_1) = 0 \\
+Cost^\star(P) = 5
+\end{statementblock}
+\end{minipage}
+\end{centeredleftblock}
+
+\subsubsection*{Model 2}
+For model \(S_2\), the initial state is \(\sigma_2 = \{\neg doorOpen, \neg hasKey\}\).
+
+\begin{figure}[H]
+\centering
+\setlength{\fboxsep}{8pt}
+\fbox{%
+\begin{tikzpicture}[
+    >=Latex,
+    node distance=2.2cm and 1.1cm,
+    state/.style={
+        draw,
+        rounded corners,
+        align=center,
+        text width=3.7cm,
+        inner sep=4pt,
+        font=\scriptsize
+    },
+    trans/.style={->, semithick}
+]
+\node[state] (s0) {$\{\neg doorOpen,\, hasKey\}$};
+\node[state, right=of s0] (s1) {$\{doorOpen,\, hasKey\}$};
+\node[state, very thick, fill=gray!15, below=of s0] (s2) {$\{\neg doorOpen,\, \neg hasKey\}$};
+\node[state, right=of s2] (s3) {$\{doorOpen,\, \neg hasKey\}$};
+
+\draw[trans] (s0) -- node[above] {$openDoor,\ 5$} (s1);
+\draw[trans] (s1) edge[loop above] node {$openDoor,\ 0$} ();
+\draw[trans] (s2) edge[loop below] node {$openDoor,\ 0$} ();
+\draw[trans] (s3) edge[loop below] node {$openDoor,\ 0$} ();
+\draw[trans] (s0) edge[loop left] node {$takeKey,\ 0$} ();
+\draw[trans] (s1) edge[loop right] node {$takeKey,\ 0$} ();
+\draw[trans] (s2) -- node[left] {$takeKey,\ 1$} (s0);
+\draw[trans] (s3) -- node[right] {$takeKey,\ 1$} (s1);
+\end{tikzpicture}
+}
+\caption{Whole state-transition graph for Example 3 in Model 2.}
+\end{figure}
+
+\subsubsection*{Execution in Model 2}
+\begin{centeredleftblock}[0.9\textwidth]
+\noindent
+\begin{minipage}[t]{0.64\linewidth}
+\begin{statementblock}
+\text{initial state: } \sigma_2 = \{\neg doorOpen, \neg hasKey\} \\
+\Psi(openDoor, \sigma_2) = \sigma_2 = \{\neg doorOpen, \neg hasKey\} \\
+\Psi(takeKey, \sigma_2) = \sigma_0 = \{\neg doorOpen, hasKey\} \\
+\Psi(openDoor, \sigma_0) = \sigma_1 = \{doorOpen, hasKey\} \\
+\Psi^\star(P, \sigma_2) = \sigma_1 = \{doorOpen, hasKey\}
+\end{statementblock}
+\end{minipage}
+\hfill
+\begin{minipage}[t]{0.28\linewidth}
+\begin{statementblock}
+Cost(openDoor, \sigma_2) = 0 \\
+Cost(takeKey, \sigma_2) = 1 \\
+Cost(openDoor, \sigma_0) = 5 \\
+Cost^\star(P) = 6
+\end{statementblock}
+\end{minipage}
+\end{centeredleftblock}
+
+\subsubsection*{Query Results}
+
+\paragraph{Q1: Goal Satisfaction}
 \[
-P = (openDoor)
+\{doorOpen\} ~\text{after}~ P
+\]
+is true because $doorOpen$ holds in the final state of every model.
+
+\paragraph{Q2: Executability with Cost}
+\[
+P ~\text{executable with cost}~ 6
+\]
+is true since in every execution:
+\[
+Cost^\star(P) \leq 6
 \]
 
-\subsubsection*{Completions of $\sigma_0$}
+\paragraph{Q3: Executability with exact Cost}
 \[
-\sigma_0^1 = \{\neg doorOpen, hasKey\}
+P ~\text{executable with exact cost}~ 6
 \]
-\[
-\sigma_0^2 = \{\neg doorOpen, \neg hasKey\}
-\]
+is false because \(Cost^\star(P) = 5\) in model \(S_1\), while
+\(Cost^\star(P) = 6\) in model \(S_2\).
 
-However, $\sigma_0^2$ is not consistent with the action domain.
 
-Indeed, since $hasKey$ does not hold, the effect does not apply, and by inertia:
-\[
-\Psi(openDoor, \sigma_0^2) \models \neg doorOpen
-\]
+\subsection*{Example 4}
+This example shows how a value statement can impose the initial state.
 
-But the value statement requires:
-\[
-\Psi(openDoor, \sigma_0^2) \models doorOpen
-\]
+\scenarioheader
+An agent stands in front of a closed door. It is unknown whether the agent
+already has the key, but a spare key hangs nearby. Taking the key makes the
+agent have the key. Opening the door makes the door open if the agent has the
+key. Taking the key costs 1. Opening the door costs 5. After 
+opening the door, the door is open.
 
-This is a contradiction. Therefore, $\sigma_0^2$ is not allowed.
 
-\subsubsection*{Execution}
+\repheader
+\begin{centeredleftblock}[0.62\textwidth]
+\begin{statementblock}
+\text{initially}~ \neg doorOpen \\
+doorOpen ~\text{after}~ openDoor \\
+takeKey ~\text{causes}~ hasKey \\
+takeKey ~\text{costs}~ 1 \\
+openDoor ~\text{causes}~ doorOpen ~\text{if}~ hasKey \\
+openDoor ~\text{costs}~ 5
+\end{statementblock}
+\end{centeredleftblock}
 
-Thus, the only possible initial state is:
+\subsubsection*{Imposition of the Initial State}
+The partial description of the initial state gives two candidate complete
+initial states:
 \[
 \sigma_0 = \{\neg doorOpen, hasKey\}
 \]
-
-Precondition holds, so:
 \[
+\sigma_2 = \{\neg doorOpen, \neg hasKey\}
+\]
+However, the value statement
+\[
+doorOpen ~\text{after}~ openDoor
+\]
+eliminates \(\sigma_2\), because
+\[
+\Psi^\star((openDoor), \sigma_2) = \sigma_0 = \{\neg doorOpen, hasKey\},
+\]
+and \(doorOpen\) does not hold in the resulting state.
+
+Therefore, the only model of the domain is
+\[
+S = (\Psi, \sigma_0, Cost).
+\]
+
+\exampleblocktitle{Set of all states}
+\[
+\states = \{\sigma_0, \sigma_1, \sigma_2, \sigma_3\},\text{ where: }
+\]
+\noindent
+\begin{minipage}[t]{0.47\textwidth}
+\begin{statementblock}
+\sigma_0 = \{\neg doorOpen, hasKey\} \\
 \sigma_1 = \{doorOpen, hasKey\}
-\]
+\end{statementblock}
+\end{minipage}
+\hfill
+\begin{minipage}[t]{0.47\textwidth}
+\begin{statementblock}
+\sigma_2 = \{\neg doorOpen, \neg hasKey\} \\
+\sigma_3 = \{doorOpen, \neg hasKey\}
+\end{statementblock}
+\end{minipage}
 
-Cost:
-\[
+\exampleblocktitle{Transition function}
+\noindent
+\begin{minipage}[t]{0.47\textwidth}
+\begin{statementblock}
+\Psi(takeKey, \sigma_0) = \sigma_0 \byrule{(M1)} \\
+\Psi(takeKey, \sigma_1) = \sigma_1 \byrule{(M1)} \\
+\Psi(takeKey, \sigma_2) = \sigma_0 \byrule{(M1)} \\
+\Psi(takeKey, \sigma_3) = \sigma_1 \byrule{(M1)}
+\end{statementblock}
+\end{minipage}
+\hfill
+\begin{minipage}[t]{0.47\textwidth}
+\begin{statementblock}
+\Psi(openDoor, \sigma_0) = \sigma_1 \byrule{(M1), (M2b)} \\
+\Psi(openDoor, \sigma_1) = \sigma_1 \byrule{(M1), (M2b)} \\
+\Psi(openDoor, \sigma_2) = \sigma_2 \byrule{(M2a), (M2b)} \\
+\Psi(openDoor, \sigma_3) = \sigma_3 \byrule{(M2a), (M2b)}
+\end{statementblock}
+\end{minipage}
+
+\exampleblocktitle{Cost function}
+\noindent
+\begin{minipage}[t]{0.47\textwidth}
+\begin{statementblock}
+Cost(takeKey, \sigma_0) = 0 \byrule{(C2b)} \\
+Cost(takeKey, \sigma_1) = 0 \byrule{(C2b)} \\
+Cost(takeKey, \sigma_2) = 1 \byrule{(C1)} \\
+Cost(takeKey, \sigma_3) = 1 \byrule{(C1)}
+\end{statementblock}
+\end{minipage}
+\hfill
+\begin{minipage}[t]{0.47\textwidth}
+\begin{statementblock}
+Cost(openDoor, \sigma_0) = 5 \byrule{(C1)} \\
+Cost(openDoor, \sigma_1) = 0 \byrule{(C2b)} \\
+Cost(openDoor, \sigma_2) = 0 \byrule{(C2b)} \\
+Cost(openDoor, \sigma_3) = 0 \byrule{(C2b)}
+\end{statementblock}
+\end{minipage}
+
+\begin{figure}[H]
+\centering
+\setlength{\fboxsep}{8pt}
+\fbox{%
+\begin{tikzpicture}[
+    >=Latex,
+    node distance=2.2cm and 1.1cm,
+    state/.style={
+        draw,
+        rounded corners,
+        align=center,
+        text width=3.7cm,
+        inner sep=4pt,
+        font=\scriptsize
+    },
+    trans/.style={->, semithick}
+]
+\node[state, very thick, fill=gray!15] (s0) {$\{\neg doorOpen,\, hasKey\}$};
+\node[state, right=of s0] (s1) {$\{doorOpen,\, hasKey\}$};
+\node[state, below=of s0] (s2) {$\{\neg doorOpen,\, \neg hasKey\}$};
+\node[state, right=of s2] (s3) {$\{doorOpen,\, \neg hasKey\}$};
+
+\draw[trans] (s0) -- node[above] {$openDoor,\ 5$} (s1);
+\draw[trans] (s1) edge[loop above] node {$openDoor,\ 0$} ();
+\draw[trans] (s2) edge[loop below] node {$openDoor,\ 0$} ();
+\draw[trans] (s3) edge[loop below] node {$openDoor,\ 0$} ();
+\draw[trans] (s0) edge[loop left] node {$takeKey,\ 0$} ();
+\draw[trans] (s1) edge[loop right] node {$takeKey,\ 0$} ();
+\draw[trans] (s2) -- node[left] {$takeKey,\ 1$} (s0);
+\draw[trans] (s3) -- node[right] {$takeKey,\ 1$} (s1);
+\end{tikzpicture}
+}
+\caption{Whole state-transition graph for Example 4. The highlighted vertex marks the only initial state that survives the value statement.}
+\end{figure}
+
+\subsubsection*{Program}
+\begin{centeredleftblock}[0.56\textwidth]
+\(
+P = (openDoor, takeKey)
+\)
+\end{centeredleftblock}
+
+
+\subsubsection*{Execution}
+\begin{centeredleftblock}[0.9\textwidth]
+\noindent
+\begin{minipage}[t]{0.64\linewidth}
+\begin{statementblock}
+\text{initial state: } \sigma_0 = \{\neg doorOpen, hasKey\} \\
+\Psi(openDoor, \sigma_0) = \sigma_1 = \{doorOpen, hasKey\} \\
+\Psi(takeKey, \sigma_1) = \sigma_1 = \{doorOpen, hasKey\} \\
+\Psi^\star(P, \sigma_0) = \sigma_1 = \{doorOpen, hasKey\}
+\end{statementblock}
+\end{minipage}
+\hfill
+\begin{minipage}[t]{0.28\linewidth}
+\begin{statementblock}
+Cost(openDoor, \sigma_0) = 5 \\
+Cost(takeKey, \sigma_1) = 0 \\
 Cost^\star(P) = 5
-\]
-
-\subsubsection*{Final States}
-\[
-\{\sigma_1\}
-\]
+\end{statementblock}
+\end{minipage}
+\end{centeredleftblock}
 
 \subsubsection*{Query Results}
 
@@ -456,43 +1011,43 @@ P ~\text{executable with exact cost}~ 5
 \]
 is true.
 
-\subsection*{Example 4}
-Let's consider the following statements:
-\[
-\text{initially}~ \neg doorOpen
-\]
-\[
-\text{initially}~ \neg hasKey
-\]
-\[
-doorOpen ~\text{after}~ openDoor
-\]
+\subsection*{Example 5}
+This final example shows an inconsistent domain.
+\scenarioheader
+An agent stands in front of a closed door and does not have the key, but a
+spare key hangs nearby. Taking the key makes the agent have the key. Opening
+the door makes the door open only if the agent has the key. Taking the key
+costs 1. Opening the door costs 5. After opening the door, the door is open.
+
+\repheader
+\begin{centeredleftblock}[0.62\textwidth]
+\begin{statementblock}
+\text{initially}~ \neg doorOpen \\
+\text{initially}~ \neg hasKey \\
+doorOpen ~\text{after}~ openDoor \\
+takeKey ~\text{causes}~ hasKey \\
+takeKey ~\text{costs}~ 1 \\
+openDoor ~\text{causes}~ doorOpen ~\text{if}~ hasKey \\
+openDoor ~\text{costs}~ 5
+\end{statementblock}
+\end{centeredleftblock}
+There is no model satisfying all statements, because the initial state is fixed as
+\(\{\neg doorOpen, \neg hasKey\}\). When \(openDoor\) is executed in this state,
+the agent does not have the key, so the effect statement
 \[
 openDoor ~\text{causes}~ doorOpen ~\text{if}~ hasKey
 \]
+is not applicable. Hence, by inertia, \(doorOpen\) remains false after \(openDoor\).
+However, the value statement
 \[
-openDoor ~\text{costs}~ 5
+doorOpen ~\text{after}~ openDoor
 \]
+requires \(doorOpen\) to be true after this action. These requirements contradict
+each other, so no model of the action domain exists.
 
-\subsubsection*{Program}
-\[
-P = (openDoor)
-\]
+These constraints are inconsistent, so no model of the action domain exists.
 
-\subsubsection*{Execution}
 
-There is no model satisfying all statements, because:
-\begin{itemize}
-\item $\sigma_0 \models \neg hasKey$
-\item the effect requires $hasKey$
-\item the value statement enforces $doorOpen$ after $openDoor$
-\end{itemize}
-
-These constraints are inconsistent.
-
-\subsubsection*{Query Results}
-
-All queries are undefined since no model exists.
 
 \section{Technical description}
 The compiler was implemented in Python as a pipeline with five main stages:
@@ -649,7 +1204,7 @@ smashDoor ~\text{costs}~ 8
 P = (pickLock, smashDoor)
 \]
 
-\subsubsection*{Completions of $\sigma_0$}
+\subsubsection*{Complete initial states}
 Because the status of the fluent $hasKey$ is left unspecified by the initial historical assumptions, we must generate all possible complete initial states:
 \[
 \sigma_0^1 = \{\neg doorUnlocked, \neg alarmActive, hasKey\}
@@ -768,7 +1323,7 @@ checkReservoir ~\text{costs}~ 2
 P = (startPump, checkReservoir)
 \]
 
-\subsubsection{Completions of $\sigma_0$}
+\subsubsection{Complete initial states}
 Since the status of $waterLow$ is omitted from the initial historical properties, the system branches into two valid complete states:
 \[
 \sigma_0^1 = \{soilDry, \neg pumpActive, \neg waterLow\}
@@ -1056,7 +1611,7 @@ flipOn ~\text{costs}~ 4
 \[
 lockSwitch ~\text{costs}~ 1
 \]
-\subsubsection*{Completions of $\sigma_0$}
+\subsubsection*{Complete initial states}
 Both fluents are fixed by the initial statements, so the initial state is complete and the model is unique:
 \[
 \sigma_0 = \{lightOn, \neg switchLocked\}
@@ -1157,7 +1712,7 @@ warmUp ~\text{costs}~ 6
 \[
 P = (warmUp)
 \]
-\subsubsection*{Completions of $\sigma_0$}
+\subsubsection*{Complete initial states}
 The fluent $powered$ is left unspecified, so two completions arise, and both are consistent since no value statement filters either out:
 \[
 \sigma_0^1 = \{\neg heated, powered\}
@@ -1245,7 +1800,7 @@ buff ~\text{causes}~ polished
 \[
 buff ~\text{costs}~ 2
 \]
-\subsubsection*{Completions of $\sigma_0$}
+\subsubsection*{Complete initial states}
 The fluent $clean$ is unspecified, giving two candidate completions:
 \[
 \sigma_0^1 = \{\neg polished, clean\}
@@ -1361,7 +1916,7 @@ bottleCapped ~\text{after}~ loadBottle, fillBottle, capBottle
 \[
 P = (loadBottle, fillBottle, capBottle)
 \]
-\subsubsection*{Completions of $\sigma_0$}
+\subsubsection*{Complete initial states}
 All three fluents are fixed by the initial statements, so the initial state is complete and there is a single candidate model:
 \[
 \sigma_0 = \{\neg bottleLoaded, \neg bottleFilled, \neg bottleCapped\}
@@ -1456,7 +2011,7 @@ loaded or not and two shots are necessary to kill the turkey.
 \[shoot ~\text{causes}~ wounded ~\text{if}~ \neg wounded\]
 \[shoot ~\text{costs}~ 5\]
 
-\subsubsection*{Completions of $\sigma_0$}
+\subsubsection*{Complete initial states}
 The fluent $wounded$ is unspecified, giving two candidate completions:
 \[\sigma_0^1 = \{alive, wounded\}\]
 \[\sigma_0^2 = \{alive, \neg wounded\}\]
@@ -1573,6 +2128,226 @@ is false. If the plant was initially watered, the program would execute with cos
     \includegraphics[width=0.8\textwidth]{testing/Wiktoria/example3.png}
     \caption{Wiktoria Koniecko - example 3}
     \label{fig:WK3}
+\end{figure}
+
+\subsection*{Sebastian Trojan}
+
+\subsection*{Example 1: The Inspection Drone}
+The drone is initially not ready and not airborne. Inspecting the drone makes
+it ready. Launching the drone makes it airborne if it is ready, and launching
+costs 6. The program inspects the drone twice and then launches it twice.
+
+\subsubsection*{Action Domain Statements}
+\[
+\text{initially}~ \neg droneReady
+\]
+\[
+\text{initially}~ \neg airborne
+\]
+\[
+inspectDrone ~\text{causes}~ droneReady
+\]
+\[
+launchDrone ~\text{causes}~ airborne ~\text{if}~ droneReady
+\]
+\[
+launchDrone ~\text{costs}~ 6
+\]
+
+\subsubsection*{Program}
+\[
+P = (inspectDrone, inspectDrone, launchDrone, launchDrone)
+\]
+
+\subsubsection*{How it works}
+The first inspection changes the state, but because no cost statement is
+declared for \(inspectDrone\), it still costs \(0\). The second inspection is
+both cost-unspecified and an empty effect, so it also costs \(0\). The first
+launch changes the fluent \(airborne\) and therefore costs \(6\), while the
+second launch has no further effect and costs \(0\).
+
+\subsubsection*{Queries}
+\[
+\{airborne\} ~\text{after}~ P
+\]
+is true.
+\[
+P ~\text{executable with exact cost}~ 6
+\]
+is true.
+\[
+inspectDrone ~\text{executable with exact cost}~ 0
+\]
+is true.
+
+\subsubsection*{Print screen}
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.8\textwidth]{testing/Sebastian/example1.png}
+    \caption{Sebastian Trojan - example 1}
+    \label{fig:ST1}
+\end{figure}
+
+\subsection*{Example 2: The Security Gate}
+The gate is initially closed. It is not known whether the employee badge is
+valid. Scanning the badge opens the gate if the badge is valid, and scanning
+costs 3. The program scans the badge once.
+
+\subsubsection*{Action Domain Statements}
+\[
+\text{initially}~ \neg gateOpen
+\]
+\[
+\text{scanBadge} ~\text{causes}~ gateOpen ~\text{if}~ badgeValid
+\]
+\[
+\text{scanBadge} ~\text{costs}~ 3
+\]
+
+\subsubsection*{Program}
+\[
+P = (scanBadge)
+\]
+
+\subsubsection*{How it works}
+Because the fluent \(badgeValid\) is not fixed initially, there are two
+models. In one model the badge is valid, so scanning it opens the gate and the
+cost is \(3\). In the second model the badge is not valid, so the action has
+an empty effect and costs \(0\). This gives two different final states and two
+different total costs for the same program.
+
+\subsubsection*{Queries}
+\[
+\{gateOpen\} ~\text{after}~ P
+\]
+is false.
+\[
+P ~\text{executable with cost}~ 3
+\]
+is true.
+\[
+P ~\text{executable with exact cost}~ 3
+\]
+is false.
+
+\subsubsection*{Print screen}
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.8\textwidth]{testing/Sebastian/example2.png}
+    \caption{Sebastian Trojan - example 2}
+    \label{fig:ST2}
+\end{figure}
+
+\subsection*{Example 3: The Cooling Console}
+Cooling is initially off. It is not known whether the filter is blocked.
+Cleaning the filter makes it not blocked and costs 2. Starting cooling makes
+cooling active if the filter is not blocked, and starting costs 4. The value
+statement requires cooling to be on after first trying to start cooling and
+then cleaning the filter.
+
+\subsubsection*{Action Domain Statements}
+\[
+\text{initially}~ \neg coolingOn
+\]
+\[
+coolingOn ~\text{after}~ startCooling, cleanFilter
+\]
+\[
+cleanFilter ~\text{causes}~ \neg filterBlocked
+\]
+\[
+startCooling ~\text{causes}~ coolingOn ~\text{if}~ \neg filterBlocked
+\]
+\[
+cleanFilter ~\text{costs}~ 2
+\]
+\[
+startCooling ~\text{costs}~ 4
+\]
+
+\subsubsection*{Program}
+\[
+P = (startCooling, cleanFilter)
+\]
+
+\subsubsection*{How it works}
+The fluent \(filterBlocked\) is initially unspecified, so there are two
+candidate complete initial states. If the filter is already clear, then
+\(startCooling\) succeeds and the value statement is satisfied. If the filter
+is blocked, then \(startCooling\) has an empty effect and \(cleanFilter\) works
+too late to make \(coolingOn\) true at the end of the program. That second
+candidate is therefore filtered out, leaving only one valid model.
+
+\subsubsection*{Queries}
+\[
+\{coolingOn\} ~\text{after}~ P
+\]
+is true.
+\[
+P ~\text{executable with cost}~ 4
+\]
+is true.
+\[
+P ~\text{executable with exact cost}~ 4
+\]
+is true.
+
+\subsubsection*{Print screen}
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.8\textwidth]{testing/Sebastian/example3.png}
+    \caption{Sebastian Trojan - example 3}
+    \label{fig:ST3}
+\end{figure}
+
+\subsection*{Example 4: The Rocket Platform}
+The rocket is initially not launched and its clamps are locked. Releasing the
+clamps makes them unlocked and costs 3. Igniting launches the rocket only if
+the clamps are already unlocked, and ignition costs 9. The value statement
+requires the rocket to be launched after first igniting and then releasing the
+clamps.
+
+\subsubsection*{Action Domain Statements}
+\[
+\text{initially}~ \neg launched
+\]
+\[
+\text{initially}~ clampsLocked
+\]
+\[
+launched ~\text{after}~ ignite, releaseClamps
+\]
+\[
+releaseClamps ~\text{causes}~ \neg clampsLocked
+\]
+\[
+ignite ~\text{causes}~ launched ~\text{if}~ \neg clampsLocked
+\]
+\[
+releaseClamps ~\text{costs}~ 3
+\]
+\[
+ignite ~\text{costs}~ 9
+\]
+
+\subsubsection*{Program}
+\[
+P = (ignite, releaseClamps)
+\]
+
+\subsubsection*{How it works}
+The initial state is fully specified, so there is only one candidate model.
+However, \(ignite\) is executed while the clamps are still locked, so it cannot
+cause \(launched\). The later action \(releaseClamps\) changes the state, but it
+comes too late to rescue the failed launch. Since the value statement requires
+\(launched\) after the whole program, no model can satisfy the domain.
+
+\subsubsection*{Print screen}
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.8\textwidth]{testing/Sebastian/example4.png}
+    \caption{Sebastian Trojan - example 4}
+    \label{fig:ST4}
 \end{figure}
 
 \section{User guide}

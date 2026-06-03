@@ -1,0 +1,13 @@
+[domain]
+initially !launched
+initially clampsLocked
+launched after ignite, releaseClamps
+releaseClamps causes !clampsLocked
+ignite causes launched if !clampsLocked
+releaseClamps costs 3
+ignite costs 9
+
+[queries]
+launched after ignite, releaseClamps
+ignite, releaseClamps executable with cost 3
+ignite, releaseClamps executable with exact cost 3

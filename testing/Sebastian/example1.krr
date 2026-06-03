@@ -1,3 +1,11 @@
 [domain]
+initially !droneReady
+initially !airborne
+inspectDrone causes droneReady
+launchDrone causes airborne if droneReady
+launchDrone costs 6
 
 [queries]
+airborne after inspectDrone, inspectDrone, launchDrone, launchDrone
+inspectDrone, inspectDrone, launchDrone, launchDrone executable with exact cost 6
+inspectDrone executable with exact cost 0
