@@ -434,10 +434,10 @@ openDoor ~\text{costs}~ 5
 \noindent
 \begin{minipage}[t]{0.47\textwidth}
 \begin{statementblock}
-\Psi(takeKey, \sigma_0) = \sigma_1 \byrule{(M1)} \\
-\Psi(takeKey, \sigma_1) = \sigma_1 \byrule{(M1)} \\
-\Psi(takeKey, \sigma_2) = \sigma_3 \byrule{(M1)} \\
-\Psi(takeKey, \sigma_3) = \sigma_3 \byrule{(M1)}
+\Psi(takeKey, \sigma_0) = \sigma_1 \byrule{(M1), (M2b)} \\
+\Psi(takeKey, \sigma_1) = \sigma_1 \byrule{(M1), (M2b)} \\
+\Psi(takeKey, \sigma_2) = \sigma_3 \byrule{(M1), (M2b)} \\
+\Psi(takeKey, \sigma_3) = \sigma_3 \byrule{(M1), (M2b)}
 \end{statementblock}
 \end{minipage}
 \hfill
@@ -502,7 +502,7 @@ Cost(openDoor, \sigma_3) = 0 \byrule{(C2b)}
 \draw[trans] (s3) edge[loop right] node {$openDoor,\ 0$} ();
 \end{tikzpicture}
 }
-\caption{Whole state-transition graph for Example 2. The highlighted vertex marks the initial state, and the graph shows the three ways in which cost 0 can arise.}
+\caption{State-transition graph for Example 2.}
 \end{figure}
 
 \subsubsection*{Program}
@@ -627,10 +627,10 @@ openDoor ~\text{costs}~ 5
 \noindent
 \begin{minipage}[t]{0.47\textwidth}
 \begin{statementblock}
-\Psi(takeKey, \sigma_0) = \sigma_0 \byrule{(M1)} \\
-\Psi(takeKey, \sigma_1) = \sigma_1 \byrule{(M1)} \\
-\Psi(takeKey, \sigma_2) = \sigma_0 \byrule{(M1)} \\
-\Psi(takeKey, \sigma_3) = \sigma_1 \byrule{(M1)}
+\Psi(takeKey, \sigma_0) = \sigma_0 \byrule{(M1), (M2b)} \\
+\Psi(takeKey, \sigma_1) = \sigma_1 \byrule{(M1), (M2b)} \\
+\Psi(takeKey, \sigma_2) = \sigma_0 \byrule{(M1), (M2b)} \\
+\Psi(takeKey, \sigma_3) = \sigma_1 \byrule{(M1), (M2b)}
 \end{statementblock}
 \end{minipage}
 \hfill
@@ -709,7 +709,7 @@ For model \(S_1\), the initial state is \(\sigma_0 = \{\neg doorOpen, hasKey\}\)
 \draw[trans] (s3) -- node[right] {$takeKey,\ 1$} (s1);
 \end{tikzpicture}
 }
-\caption{Whole state-transition graph for Example 3 in Model 1.}
+\caption{State-transition graph for Example 3 in Model 1.}
 \end{figure}
 
 \subsubsection*{Execution in Model 1}
@@ -770,7 +770,7 @@ For model \(S_2\), the initial state is \(\sigma_2 = \{\neg doorOpen, \neg hasKe
 \draw[trans] (s3) -- node[right] {$takeKey,\ 1$} (s1);
 \end{tikzpicture}
 }
-\caption{Whole state-transition graph for Example 3 in Model 2.}
+\caption{State-transition graph for Example 3 in Model 2.}
 \end{figure}
 
 \subsubsection*{Execution in Model 2}
@@ -891,10 +891,10 @@ S = (\Psi, \sigma_0, Cost).
 \noindent
 \begin{minipage}[t]{0.47\textwidth}
 \begin{statementblock}
-\Psi(takeKey, \sigma_0) = \sigma_0 \byrule{(M1)} \\
-\Psi(takeKey, \sigma_1) = \sigma_1 \byrule{(M1)} \\
-\Psi(takeKey, \sigma_2) = \sigma_0 \byrule{(M1)} \\
-\Psi(takeKey, \sigma_3) = \sigma_1 \byrule{(M1)}
+\Psi(takeKey, \sigma_0) = \sigma_0 \byrule{(M1), (M2b)} \\
+\Psi(takeKey, \sigma_1) = \sigma_1 \byrule{(M1), (M2b)} \\
+\Psi(takeKey, \sigma_2) = \sigma_0 \byrule{(M1), (M2b)} \\
+\Psi(takeKey, \sigma_3) = \sigma_1 \byrule{(M1), (M2b)}
 \end{statementblock}
 \end{minipage}
 \hfill
@@ -959,7 +959,7 @@ Cost(openDoor, \sigma_3) = 0 \byrule{(C2b)}
 \draw[trans] (s3) -- node[right] {$takeKey,\ 1$} (s1);
 \end{tikzpicture}
 }
-\caption{Whole state-transition graph for Example 4. The highlighted vertex marks the only initial state that survives the value statement.}
+\caption{State-transition graph for Example 4.}
 \end{figure}
 
 \subsubsection*{Program}
@@ -2421,20 +2421,27 @@ DOMAIN STATUS: inconsistent
 \end{verbatim}
 and query evaluation is skipped.
 
+
 \section{Contribution}
-For the parts evaluated in this report, the work was divided equally among all
-team members. The testing part was graded separately and is therefore not included
-in the division below. The following list presents the primary responsibility
-assigned to each person in the project.
+For the parts of the report assessed jointly, all team members contributed equally.
+The scope of testing performed by individual team members is described in the
+``Testing'' section, so it is not included in the list below. Most of the report
+and code were developed collaboratively, while the following list presents the
+main area of responsibility assigned to each person in the project.
 
 \begin{itemize}
-    \item \textbf{Jakub Seliga -- 25\%}: preparation of the example part of the
-    report, including the construction and description of example domains and
-    illustrative scenarios.
-    \item \textbf{Michal Szewczak -- 25\%}: preparation of the introduction, technical description of the adopted
-    data structures and algorithms and, the user guide.
-    \item \textbf{Sebastian Trojan -- 25\%}: implementation of the compiler and
-    executable application.
+    \item \textbf{Jakub Seliga -- 25\%}: implementation of the parser for the
+    action language and query language, including the processing of domain and
+    query statements from the specification format, as well as preparation of the
+    example part of the report, including the construction and description of
+    example domains and illustrative scenarios.
+    \item \textbf{Michal Szewczak -- 25\%}: implementation of the graphical user
+    interface and executable application, including file handling and user
+    interaction, as well as preparation of the introduction, technical description
+    of the adopted data structures and algorithms, and the user guide.
+    \item \textbf{Sebastian Trojan -- 25\%}: implementation of the core compiler,
+    including the construction of states, transition and cost tables, model
+    generation, and query evaluation.
     \item \textbf{Wiktoria Koniecko -- 25\%}: preparation and refinement of the
     formal theoretical part of the report, especially the syntax and semantics of
     the action language and query language, as well as notation consistency.
