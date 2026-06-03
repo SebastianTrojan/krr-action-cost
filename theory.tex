@@ -21,7 +21,20 @@
 \section*{Introduction}
 
 The field of Knowledge Representation and Reasoning (KRR) focuses on formalizing information so that a computer system can utilize it to solve complex tasks, such as simulating the evolution of a dynamic environment. Within this domain, action languages provide a structured way to model how autonomous agents interact with their surroundings through sequences of operations. By defining the logic behind state transitions, these systems enable automated reasoning about the consequences, feasibility, and resource requirements of specific plans.
-The primary objective of this project is to formalize and implement a logic-based framework for representing and reasoning about dynamic systems within the $\mathbb{DS}_{4}$ class. The class is an extension of class of dynamic systems described by Action Language $\mathbb{A}$,  and has following assumptions:
+A foundational representative of this family is Action Language
+$\mathbb{A}$, which models dynamic systems
+through fluents, actions, and causal laws governing state transitions.
+Subsequent extensions have enriched this framework to accommodate
+richer reasoning scenarios. The project concerns one such
+extension: the class $\mathbb{DS}_{4}$ of dynamic systems, which
+augments the expressiveness of $\mathbb{A}$ by associating a
+\textit{cost} $\kappa \geq 1$ with every action, enabling
+resource-aware reasoning over action sequences. This addition is
+practically significant: many real-world planning problems require
+not only a feasible plan, but an \textit{optimal} one with respect
+to time, energy, or monetary cost.
+The class $\mathbb{DS}_{4}$ is defined under the following
+assumptions:
 \begin{enumerate}
     \item \textbf{Inertia law:} Fluents persist in their state unless changed by an action.
     \item \textbf{Complete information:} The system assumes full knowledge of all actions and all fluents.
@@ -37,7 +50,6 @@ The primary objective of this project is to formalize and implement a logic-base
     \item \textbf{Partial descriptions:} The system allows for incomplete descriptions of any given state.
     \item \textbf{No constraints:} No state or domain constraints are admitted in this class.
 \end{enumerate}
-The difference from standard Action Language $\mathbb{A}$ is the cost associated with an action.
 
 \section{Action language syntax}
 \noindent A \textbf{signature} \(\Upsilon\) consists of:
