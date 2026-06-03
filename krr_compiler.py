@@ -8,21 +8,28 @@ from enum import Enum
 from pathlib import Path
 from typing import Callable, TypeVar
 
-from prompt_toolkit.application import Application
+from prompt_toolkit.application import Application, get_app
 from prompt_toolkit.application.run_in_terminal import run_in_terminal
+from prompt_toolkit.buffer import Buffer
 from prompt_toolkit.filters import Condition
 from prompt_toolkit.key_binding import KeyBindings
-from prompt_toolkit.layout.containers import ConditionalContainer, Float, FloatContainer
+from prompt_toolkit.layout.controls import FormattedTextControl
+from prompt_toolkit.layout.containers import ConditionalContainer, Float, FloatContainer, Window
 from prompt_toolkit.layout import HSplit, Layout, VSplit
 from prompt_toolkit.layout.dimension import Dimension
-from prompt_toolkit.widgets import Frame, TextArea
+from prompt_toolkit.mouse_events import MouseEvent, MouseEventType
+from prompt_toolkit.widgets import Button, Frame, Label, TextArea
 
 
 IDENTIFIER_RE = re.compile(r"[A-Za-z_][A-Za-z0-9_-]*")
-INCONSISTENT_DOMAIN_MESSAGE = "DOMAIN STATUS: inconsistent (no model satisfies all value/effect statements)"
+INCONSISTENT_DOMAIN_MESSAGE = "The domain is inconsistent."
 
 
 class ParseError(ValueError):
+    pass
+
+
+class InconsistentDomainError(ParseError):
     pass
 
 
@@ -557,9 +564,7 @@ def build_transition_table(
                     if preconditions_hold(state, statement.preconditions, index_by_fluent):
                         applicable_values.add(statement.literal.positive)
                 if len(applicable_values) > 1:
-                    raise ParseError(
-                        f"Contradictory effects detected for action '{action}' and fluent '{fluent}'."
-                    )
+                    raise InconsistentDomainError()
                 if applicable_values:
                     next_state[index_by_fluent[fluent]] = next(iter(applicable_values))
             transition_table[(action, state)] = tuple(next_state)
@@ -577,9 +582,7 @@ def build_cost_table(
     for statement in cost_statements:
         previous = declared_costs.get(statement.action)
         if previous is not None and previous != statement.cost:
-            raise ParseError(
-                f"Conflicting costs declared for action '{statement.action}' at line {statement.source_line}."
-            )
+            raise InconsistentDomainError()
         declared_costs[statement.action] = statement.cost
 
     cost_table: dict[tuple[str, tuple[bool, ...]], int] = {}
@@ -733,6 +736,8 @@ def evaluate_inputs(
 ) -> str:
     try:
         context = evaluate_domain(domain)
+    except InconsistentDomainError:
+        return INCONSISTENT_DOMAIN_MESSAGE
     except ParseError as exc:
         if domain_source_name is None:
             raise
@@ -774,8 +779,126 @@ def evaluate_text_fragments(
     )
 
 
-def interactive_status_text() -> str:
-    return "F5/Ctrl+R - Run   Esc/Ctrl+Q - Exit   F1 - Help   Ctrl+O - Open file"
+def delete_selection_or_backspace(buffer: Buffer) -> None:
+    if buffer.read_only():
+        return
+    if buffer.selection_state:
+        buffer.cut_selection()
+        return
+    buffer.delete_before_cursor()
+
+
+def wrap_mouse_handler_to_clear_toolbar_hover(
+    mouse_handler: Callable[[MouseEvent], object],
+    clear_hover: Callable[[], None] | None = None,
+) -> Callable[[MouseEvent], object]:
+    clear = HoverButton.clear_hover if clear_hover is None else clear_hover
+
+    def wrapped(mouse_event: MouseEvent) -> object:
+        if mouse_event.event_type in (
+            MouseEventType.MOUSE_MOVE,
+            MouseEventType.MOUSE_DOWN,
+            MouseEventType.MOUSE_UP,
+        ):
+            clear()
+        return mouse_handler(mouse_event)
+
+    return wrapped
+
+
+class HoverButton:
+    _hovered_button: "HoverButton | None" = None
+
+    def __init__(self, text: str, handler: Callable[[], None], width: int) -> None:
+        self.text = text
+        self.handler = handler
+        self.width = width
+        self.hovered = False
+        self.control = FormattedTextControl(
+            self._get_text_fragments,
+            key_bindings=self._get_key_bindings(),
+            focusable=True,
+        )
+        self.window = Window(
+            self.control,
+            height=1,
+            width=width,
+            dont_extend_height=True,
+            dont_extend_width=True,
+        )
+
+    @classmethod
+    def clear_hover(cls) -> None:
+        if cls._hovered_button is not None:
+            cls._hovered_button.hovered = False
+            cls._hovered_button = None
+            get_app().invalidate()
+
+    def _set_hover(self, hovered: bool) -> None:
+        if hovered:
+            if HoverButton._hovered_button is not None and HoverButton._hovered_button is not self:
+                HoverButton._hovered_button.hovered = False
+            HoverButton._hovered_button = self
+        elif HoverButton._hovered_button is self:
+            HoverButton._hovered_button = None
+
+        if self.hovered != hovered:
+            self.hovered = hovered
+            get_app().invalidate()
+
+    def _current_style(self) -> str:
+        if get_app().layout.has_focus(self):
+            return "class:button.focused"
+        if self.hovered:
+            return "class:button.focused"
+        return "class:button"
+
+    def _mouse_handler(self, mouse_event: MouseEvent) -> None:
+        if mouse_event.event_type == MouseEventType.MOUSE_MOVE:
+            self._set_hover(True)
+        elif mouse_event.event_type == MouseEventType.MOUSE_UP:
+            self._set_hover(True)
+            self.handler()
+
+    def _get_text_fragments(self) -> list[tuple[str, str, Callable[[MouseEvent], None]]]:
+        text = f" {self.text} "
+        padded = f"{text:^{self.width}}"
+        style = self._current_style()
+        return [(style, padded, self._mouse_handler)]
+
+    def _get_key_bindings(self) -> KeyBindings:
+        kb = KeyBindings()
+
+        @kb.add(" ")
+        @kb.add("enter")
+        def _(_event) -> None:
+            self.handler()
+
+        return kb
+
+    def __pt_container__(self) -> Window:
+        return self.window
+
+
+class HoverClearArea:
+    def __init__(self) -> None:
+        self.control = FormattedTextControl(self._get_text_fragments, focusable=False)
+        self.window = Window(
+            self.control,
+            width=Dimension(weight=1),
+            height=1,
+            dont_extend_height=True,
+        )
+
+    def _mouse_handler(self, mouse_event: MouseEvent) -> None:
+        if mouse_event.event_type == MouseEventType.MOUSE_MOVE:
+            HoverButton.clear_hover()
+
+    def _get_text_fragments(self) -> list[tuple[str, str, Callable[[MouseEvent], None]]]:
+        return [("", " ", self._mouse_handler)]
+
+    def __pt_container__(self) -> Window:
+        return self.window
 
 
 def interactive_help_text() -> str:
@@ -828,6 +951,7 @@ def interactive_help_text() -> str:
             "  Tab / Shift+Tab: switch between Domain and Queries",
             "  F5 / Ctrl+R: run compiler",
             "  Esc / Ctrl+Q: exit",
+            "  X button / F1: close help",
             "Press F1 again to hide this help.",
         )
     )
@@ -898,14 +1022,14 @@ def run_interactive_workspace(
         read_only=True,
         focusable=False,
     )
-    status_area = TextArea(
-        text=interactive_status_text(),
-        multiline=False,
-        wrap_lines=False,
-        read_only=True,
-        focusable=False,
-        dont_extend_height=True,
-        height=1,
+    domain_area.control.mouse_handler = wrap_mouse_handler_to_clear_toolbar_hover(
+        domain_area.control.mouse_handler
+    )
+    query_area.control.mouse_handler = wrap_mouse_handler_to_clear_toolbar_hover(
+        query_area.control.mouse_handler
+    )
+    output_area.control.mouse_handler = wrap_mouse_handler_to_clear_toolbar_hover(
+        output_area.control.mouse_handler
     )
     help_area = TextArea(
         text=interactive_help_text(),
@@ -920,8 +1044,23 @@ def run_interactive_workspace(
     )
     show_help = {"value": False}
 
+    def hide_help() -> None:
+        show_help["value"] = False
+        HoverButton.clear_hover()
+        app = get_app()
+        app.layout.focus(domain_area)
+        app.invalidate()
+
+    help_close_button = Button("X", handler=hide_help, width=3, left_symbol="", right_symbol="")
+    help_header = VSplit(
+        [
+            Label("Help", dont_extend_width=True),
+            Window(char=" ", width=Dimension(weight=1), height=1),
+            help_close_button,
+        ]
+    )
     help_panel = ConditionalContainer(
-        content=Frame(help_area, title="Help"),
+        content=Frame(HSplit([help_header, help_area]), title=""),
         filter=Condition(lambda: show_help["value"]),
     )
 
@@ -935,25 +1074,24 @@ def run_interactive_workspace(
         except (OSError, ParseError) as exc:
             output_area.text = f"ERROR: {exc}"
 
-    bindings = KeyBindings()
-
-    @bindings.add("f5")
-    @bindings.add("c-r")
-    def run_compiler(_event) -> None:
+    def run_compiler_action() -> None:
+        HoverButton.clear_hover()
         run_current_buffers()
 
-    @bindings.add("c-o")
-    def open_file(event) -> None:
+    def open_file_action() -> None:
+        HoverButton.clear_hover()
+        app = get_app()
+
         async def choose_and_load() -> None:
             try:
                 selected_path = await run_in_terminal(choose_interactive_spec_file, in_executor=True)
             except Exception as exc:
                 output_area.text = f"ERROR: {exc}"
-                event.app.invalidate()
+                app.invalidate()
                 return
 
             if not selected_path:
-                event.app.invalidate()
+                app.invalidate()
                 return
 
             try:
@@ -965,19 +1103,56 @@ def run_interactive_workspace(
                 query_area.text = query_text
                 output_area.text = ""
                 show_help["value"] = False
-                event.app.layout.focus(domain_area)
-            event.app.invalidate()
+                app.layout.focus(domain_area)
+            app.invalidate()
 
-        event.app.create_background_task(choose_and_load())
+        app.create_background_task(choose_and_load())
 
-    @bindings.add("f1")
-    def toggle_help(event) -> None:
+    def toggle_help_action() -> None:
+        HoverButton.clear_hover()
+        app = get_app()
         show_help["value"] = not show_help["value"]
         if show_help["value"]:
-            event.app.layout.focus(help_area)
-        elif event.app.layout.has_focus(help_area):
-            event.app.layout.focus(domain_area)
-        event.app.invalidate()
+            app.layout.focus(help_area)
+        elif app.layout.has_focus(help_area):
+            app.layout.focus(domain_area)
+        app.invalidate()
+
+    def quit_editor_action() -> None:
+        HoverButton.clear_hover()
+        get_app().exit(result=None)
+
+    toolbar = VSplit(
+        [
+            HoverButton("Open (Ctrl+O)", open_file_action, width=15),
+            HoverButton("Run (F5/Ctrl+R)", run_compiler_action, width=17),
+            HoverButton("Help (F1)", toggle_help_action, width=12),
+            HoverButton("Exit (Esc/Ctrl+Q)", quit_editor_action, width=18),
+            HoverClearArea(),
+        ],
+        padding=1,
+    )
+
+    bindings = KeyBindings()
+
+    @bindings.add("f5")
+    @bindings.add("c-r")
+    def run_compiler(_event) -> None:
+        run_compiler_action()
+
+    @bindings.add("c-o")
+    def open_file(_event) -> None:
+        open_file_action()
+
+    @bindings.add("f1")
+    def toggle_help(_event) -> None:
+        toggle_help_action()
+
+    @bindings.add("backspace")
+    @bindings.add("c-h")
+    def backspace_handler(event) -> None:
+        if event.app.layout.has_focus(domain_area) or event.app.layout.has_focus(query_area):
+            delete_selection_or_backspace(event.current_buffer)
 
     @bindings.add("tab")
     def focus_next(event) -> None:
@@ -995,12 +1170,12 @@ def run_interactive_workspace(
 
     @bindings.add("escape")
     @bindings.add("c-q")
-    def quit_editor(event) -> None:
-        event.app.exit(result=None)
+    def quit_editor(_event) -> None:
+        quit_editor_action()
 
     main_container = HSplit(
         [
-            status_area,
+            toolbar,
             VSplit(
                 [
                     Frame(domain_area, title="Domain"),

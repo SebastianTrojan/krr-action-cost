@@ -69,7 +69,7 @@ The opened file should use the combined structure:
 If your terminal supports it, interactive mode opens a persistent split editor:
 
 ```text
-F5/Ctrl+R - Run   Esc/Ctrl+Q - Exit   F1 - Help
+[Open] [Run] [Help] [Exit]
 
 ---------------------------------------------
 | Domain                      | Queries      |
@@ -93,7 +93,8 @@ Interactive mode rules:
 - `Ctrl+O` opens a combined `.krr` or `.txt` spec file into the editor
 - `F5` or `Ctrl+R` runs the compiler without closing the editor
 - `Esc` or `Ctrl+Q` exits the editor
-- `F1` toggles the detailed help panel
+- `F1` toggles the detailed help panel, and the panel can also be closed with its `X` button
+- The top `Open`, `Run`, `Help`, and `Exit` labels are clickable buttons
 - The `F1` help panel includes syntax descriptions and examples for both the Domain and Queries panes
 - The domain stays in place, so you can change queries and run again as many times as you want
 - If there is an error, it appears in the Output pane and you can keep editing both panes immediately

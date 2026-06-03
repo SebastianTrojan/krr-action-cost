@@ -1446,8 +1446,8 @@ By semantic definition, a structure satisfies this statement if and only if the 
 
 However, the transition rules evaluated via inertia explicitly proved that $\sigma_1 \models \neg doorUnlocked$. Because a valid state assignment cannot simultaneously contain a fluent and its logical negation, no transition function can reconcile the observation constraint with the environmental physics.
 
-Therefore, no valid structure exists for this setup, and the system correctly terminates during compilation with a status of:
-\[ \text{\textbf{DOMAIN STATUS: inconsistent}} \]
+Therefore, no valid structure exists for this setup, and the system correctly terminates during compilation with the message:
+\[ \text{\textbf{The domain is inconsistent.}} \]
 
 \subsubsection{Query Results}
 Because no model can be constructed to satisfy the underlying constraints of the dynamic domain, all downstream query validations are structurally precluded from running. The query state evaluations are formally defined as \textbf{undefined}.
@@ -2417,7 +2417,7 @@ For a consistent domain, the compiler prints every query together with the
 corresponding result \texttt{TRUE} or \texttt{FALSE}. If the domain is
 inconsistent, the compiler prints only:
 \begin{verbatim}
-DOMAIN STATUS: inconsistent
+The domain is inconsistent.
 \end{verbatim}
 and query evaluation is skipped.
 

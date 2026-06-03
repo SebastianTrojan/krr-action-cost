@@ -7,6 +7,9 @@ import unittest
 from pathlib import Path
 
 import krr_compiler
+from prompt_toolkit.buffer import Buffer
+from prompt_toolkit.data_structures import Point
+from prompt_toolkit.mouse_events import MouseButton, MouseEvent, MouseEventType
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -79,7 +82,7 @@ class TheoryExamplesTest(unittest.TestCase):
 
     def test_example_4(self) -> None:
         output = run_compiler("example4.krr")
-        self.assertIn("DOMAIN STATUS: inconsistent", output)
+        self.assertIn("The domain is inconsistent.", output)
         self.assertNotIn("QUERY 1:", output)
         self.assertNotIn("RESULT 1:", output)
 
@@ -217,6 +220,55 @@ openDoor executable with cost 5
             "doorOpen after openDoor\nopenDoor executable with cost 5\n",
         )
         self.assertEqual(output, krr_compiler.INCONSISTENT_DOMAIN_MESSAGE)
+
+    def test_contradictory_effects_are_reported_as_inconsistent_domain(self) -> None:
+        output = krr_compiler.evaluate_text_fragments(
+            "toggle causes on\ntoggle causes !on\n",
+            "on after toggle\n",
+        )
+        self.assertEqual(output, krr_compiler.INCONSISTENT_DOMAIN_MESSAGE)
+
+    def test_conflicting_costs_are_reported_as_inconsistent_domain(self) -> None:
+        output = krr_compiler.evaluate_text_fragments(
+            "flip causes on\nflip costs 1\nflip costs 2\n",
+            "flip executable with cost 2\n",
+        )
+        self.assertEqual(output, krr_compiler.INCONSISTENT_DOMAIN_MESSAGE)
+
+    def test_delete_selection_or_backspace_removes_selected_text(self) -> None:
+        buffer = Buffer()
+        buffer.text = "hello world"
+        buffer.cursor_position = len(buffer.text)
+        buffer.start_selection()
+        buffer.cursor_position = 6
+
+        krr_compiler.delete_selection_or_backspace(buffer)
+
+        self.assertEqual(buffer.text, "hello ")
+
+    def test_mouse_wrapper_clears_toolbar_hover_on_pane_entry(self) -> None:
+        calls: list[str] = []
+
+        def original_handler(mouse_event: MouseEvent) -> str:
+            calls.append(mouse_event.event_type.value)
+            return "handled"
+
+        wrapped = krr_compiler.wrap_mouse_handler_to_clear_toolbar_hover(
+            original_handler,
+            clear_hover=lambda: calls.append("clear"),
+        )
+
+        result = wrapped(
+            MouseEvent(
+                position=Point(x=0, y=0),
+                event_type=MouseEventType.MOUSE_MOVE,
+                button=MouseButton.NONE,
+                modifiers=frozenset(),
+            )
+        )
+
+        self.assertEqual(result, "handled")
+        self.assertEqual(calls, ["clear", MouseEventType.MOUSE_MOVE.value])
 
     def test_interactive_domain_errors_name_the_domain_window(self) -> None:
         with self.assertRaisesRegex(
